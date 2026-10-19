@@ -19,7 +19,17 @@ shots, reuse phrasing for continuity"). Reference images are the other control �
 - **Fixed vocabulary:** once you call it a "rust-orange waxed raincoat", never call it "orange jacket".
 - **No names inside the lock** (models do not know who "Maya" is) except as a label the tool supports.
 - **No emotions, story, personality or quality words** ("brave", "beautiful", "masterpiece").
-- **Separate character and costume locks**, so the same face can wear different looks.
+- **Separate character and costume locks**, so the same face can wear different looks; never repeat a
+  detail in both (it doubles prompt length and can conflict).
+- **Positive phrasing:** describe what is there, not what is absent. "Bare neck and wrists" — not "no
+  collar, no jewelry". Several video tools handle negation poorly (Runway's guide: negative phrasing may
+  produce the opposite; Veo's guide: describe what you want instead).
+- **Short lock as well:** also write a `short_lock` of 10-25 words — the most recognizable features only —
+  for shots where the character is small, soft or secondary, and for multi-character prompts. It is owned by
+  you like the full lock and is also pasted verbatim, never improvised by others.
+
+Short lock example: "slight 17-year-old East African girl, close-cropped black curls, scar through the
+left eyebrow, silver hoop in the right ear".
 
 ## 2. Order of information
 Character lock: age + presentation · build and height impression · face shape · skin tone · eyes ·

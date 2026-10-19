@@ -63,7 +63,9 @@ policy, depth-of-field tendency — not per-shot focal lengths, which are the ci
 (grain amount, halation, sharpness, skin rendering, line weight for 2D).
 
 **6 Style lock and avoid list.** Write the style lock: 30-70 words, the fixed look description pasted into
-every prompt. Write the avoid list as positive alternatives where possible (models handle positive phrasing
+every prompt — including prompts for every location — so it holds only medium, texture, light quality and
+contrast, palette anchors and lens character. **No places, characters, story or aspect ratio** (the aspect
+ratio is a generation parameter; a place in the style lock leaks into every other location's shots). Write the avoid list as positive alternatives where possible (models handle positive phrasing
 better — "clean frame without text or watermarks" rather than "no text"). Do not use living artists' names
 as style shortcuts; describe the qualities instead.
 
@@ -84,7 +86,8 @@ intent (film-editor).
 - After approval, changes go through a change request (every prompt and image depends on the lock).
 
 ## Quality checks
-- `record: style` complete; style lock 30-70 words, visual facts only.
+- `record: style` complete; style lock 30-70 words, visual facts only, with no location, character,
+  story or aspect-ratio words.
 - Every scene in the scene index has a color-script row tied to its emotional beat.
 - Adjacent scenes differ deliberately (or the sameness is explained).
 - Palette roles include reserved character anchors and a danger/accent role.

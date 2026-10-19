@@ -68,7 +68,9 @@ state begins (`PR-PARCEL:DRY` → `PR-PARCEL:WET` → `PR-PARCEL:OPENED`). Detai
 prop sheet.
 
 **7 Identity locks.** Location lock 25-60 words (the fixed architecture, materials, landmarks — not
-lighting or weather, which vary); prop lock 25-60 words. Visual facts only, fixed vocabulary.
+lighting or weather, which vary); prop lock 25-60 words. Visual facts only, fixed vocabulary, positive
+phrasing ("blank unmarked walls", not "no writing"). Also a `short_lock` (10-25 words) for each location and
+prop, pasted verbatim when it is only background or out of focus in a shot.
 
 **8 Plates and sheets.** Specify location plates: for each location, the empty set from the 1-3 main camera
 positions the script implies (wide establishing, reverse angle), at each needed time of day; camera height
@@ -95,6 +97,7 @@ Record approved images in the record's `reference_images`.
 - Each location has a floor plan with exits and landmarks and at least one motivated light source per
   time variant.
 - Locks within word limits; no lighting/weather/emotion words in locks.
+- Every location and prop has a `short_lock` (10-25 words); no lock uses "no ..." phrasing.
 - Landmarks are distinctive enough to orient the audience after a cut.
 - Hard-for-AI items (readable signs, screens, complex machinery) are simplified or flagged for VFX.
 

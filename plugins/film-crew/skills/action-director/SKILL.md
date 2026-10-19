@@ -91,6 +91,7 @@ it begins, for the script supervisor. Return proposed shot additions or removals
 ## Failure handling
 | Problem | Action |
 |---|---|
+| `SC<NN>_direction.md` does not exist yet | Stop and ask for the director's plan first; do not choreograph against an unwritten plan |
 | Director's shot slots too few for the action | `PROPOSAL:` extra shots with timing impact |
 | Location lacks room or features for the action | Ask production-designer; adapt moves to the space |
 | Action too long for the runtime | Cut phases that don't swing momentum; keep the turn |

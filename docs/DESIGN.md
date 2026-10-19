@@ -1,7 +1,7 @@
 # Design
 
-How the film-crew system is put together and why. Research behind these decisions:
-[research/RESEARCH.md](research/RESEARCH.md) and [research/existing-skills-review.md](research/existing-skills-review.md).
+How the film-crew system is put together and why. Research behind these decisions, including the review
+of existing skill repositories: [research/RESEARCH.md](research/RESEARCH.md).
 
 ## Contents
 1. Goals and constraints

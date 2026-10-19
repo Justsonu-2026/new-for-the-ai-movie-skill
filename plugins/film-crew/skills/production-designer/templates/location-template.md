@@ -27,6 +27,7 @@ palette: []
 set_dressing: []
 identity_lock: >-
   <25-60 words: fixed architecture, materials, landmarks; no light/weather/emotion>
+short_lock: "<10-25 words, for background or soft-focus appearances>"
 variants:
   - {time_of_day: , weather: , notes: }
 reference_images: []

@@ -79,7 +79,12 @@ Run stages in the order above; stages in the same row may run in parallel. For e
 
 Specialist routing: send a scene to **action-director** when it contains a fight, chase, stunt or other
 physical set piece, and to **animation-director** when the medium is animation (2D, 3D, stop-motion,
-anime) — both work inside the film-director's plan, not instead of it.
+anime) — both work inside the film-director's plan, not instead of it. Order matters: the director's
+`SC<NN>_direction.md` must be written first, and the specialist reads that file; then the director folds
+the specialist's shot proposals back into the shot list (bump the direction version).
+
+Scripts: run the bundled scripts as shown; you do not need to read their source code (their usage is in
+this file and in `--help`).
 
 ### Step 3 — Scene breakdown
 After the screenplay is locked, make the element breakdown per scene: cast, extras, costumes, props and

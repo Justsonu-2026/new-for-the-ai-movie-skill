@@ -26,6 +26,7 @@ states:
   - {id: PR-<SLUG>:BASE, description: "", from: SC01, cause: "start"}
 identity_lock: >-
   <25-60 words>
+short_lock: "<10-25 words, for small or out-of-focus appearances>"
 reference_images: []
 ```
 

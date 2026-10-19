@@ -30,6 +30,7 @@ height_cm:
 build:
 identity_lock: >-
   <40-80 words, visual facts only>
+short_lock: "<10-25 words: most recognizable features, for small/soft/secondary appearances>"
 face:
 hair:
 skin:
@@ -58,6 +59,7 @@ condition_states:
 scenes: []
 identity_lock: >-
   <25-60 words>
+short_lock: "<10-25 words: most recognizable features, for small/soft/secondary appearances>"
 ```
 
 ## Sheets

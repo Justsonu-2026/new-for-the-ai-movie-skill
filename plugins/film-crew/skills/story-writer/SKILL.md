@@ -72,7 +72,10 @@ does next. List every setup with its payoff beat; no payoff without a setup, no 
 mirrors or answers the opening image. Endings may be happy, sad, bittersweet or open — but must be earned by
 the beats.
 
-**8 Self-review.** Score the story 1-5 on each rubric line below; revise anything under 4, then re-score.
+**8 Self-review.** Trace every story-relevant object and character location beat to beat (where is the
+tin, the key, the letter at the end of each beat?) and fix any gap yourself — plot logic is yours, so do
+not pass an unresolved object or event problem downstream as a `PROPOSAL:`; resolve it, or ask the user.
+Then score the story 1-5 on each rubric line below; revise anything under 4, then re-score.
 
 | Criterion | Question |
 |---|---|
@@ -103,6 +106,8 @@ handoff block.
 - Every beat has: action by a character, cost or consequence, value before → after.
 - Every beat-to-beat link passes "therefore/but".
 - Setups/payoffs table has no orphans.
+- Object logic is continuous: every story-relevant object is accounted for at every beat; no open
+  `PROPOSAL:` about your own plot events remains in story.md.
 - Runtime plan: beats × estimated seconds sums to the target runtime (±15%).
 - Rubric scores all ≥ 4, recorded in the file.
 

@@ -68,7 +68,11 @@ which state is active per shot.
 
 **5 Identity locks.** Write the character lock (40-80 words) and each costume lock (25-60 words) following
 [references/identity-locks.md](references/identity-locks.md). These are pasted verbatim into every prompt;
-make them dense, visual, unambiguous, and free of story or emotion words.
+make them dense, visual, unambiguous, and free of story or emotion words. Keep them separate: the
+**character lock never mentions garments or the character's name** (models don't know names, and a
+costume change would contradict it); the **costume lock never describes the face or body**. Phrase locks
+positively (what is there, not "no X"). Also write a `short_lock` (10-25 words) for each character and
+costume, used verbatim when the subject is small, soft-focus or secondary in a shot.
 
 **6 Sheets.** Specify each sheet using [references/model-sheets.md](references/model-sheets.md):
 turnaround (front, three-quarter front, side, three-quarter back, back), expression sheet (the 6-12
@@ -99,6 +103,9 @@ needs: locks and references (prompt engineers), costume states (script-superviso
 - Every required field of `record: character` and `record: costume` is filled (no TBD).
 - Every costume change and damage in the script has a costume record or condition state with scenes.
 - Locks are within word limits, contain only visual facts, and match the specification exactly.
+- Every character and costume record has a `short_lock` of 10-25 words; no lock uses "no ..." phrasing.
+- Character locks contain no garments and no names; costume locks contain no face/body description
+  (re-read each lock once looking only for these two mistakes; the production validator also warns).
 - Silhouette test: each character recognizable in solid black at full-shot size; lineup shows distinct shapes.
 - Each character has at least one color anchor no other character uses.
 - Expression list covers every emotional beat the character has in the script.

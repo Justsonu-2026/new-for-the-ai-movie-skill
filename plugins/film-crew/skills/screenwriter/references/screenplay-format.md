@@ -29,7 +29,7 @@ Draft date: 2026-10-19
 | Scene number (optional) | `#3#` at the end of the heading | — |
 | Action | Any plain paragraph | start with `!` |
 | Character cue | Line in ALL CAPS followed directly by dialogue | start with `@` (for names with lowercase) |
-| Extensions | `MAYA (V.O.)`, `MAYA (O.S.)`, `MAYA (CONT'D)` | — |
+| Extensions | `MAYA (V.O.)`, `MAYA (O.S.)`, `MAYA (CONT'D)` — CONT'D only when the same character speaks again after action lines interrupted their speech in the same scene; never on a character's first line | — |
 | Dialogue | Lines directly under the character cue | — |
 | Parenthetical | `(barely audible)` on its own line under the cue or inside dialogue | — |
 | Dual dialogue | add `^` after the second character's cue | — |
