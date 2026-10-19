@@ -236,6 +236,15 @@ class ValidatorTests(unittest.TestCase):
         self.assertIn("mentions garments ['coat']", joined)
         self.assertIn("identity_lock has 8 words", joined)
 
+    def test_motion_budget_and_clip_time_warn(self):
+        shot = SHOT.replace('action_timeline: ["0-4 s: walks, stops, looks up"]',
+                            'action_timeline: ["a", "b", "c", "d", "e"]').replace("clip_length_s: 5", "clip_length_s: 8")
+        make_project(self.tmp, shot)
+        _, rep = self.validate()
+        joined = "\n".join(rep["warnings"])
+        self.assertIn("5 action beats", joined)
+        self.assertIn("record generation.keep", joined)
+
     def test_duplicate_id(self):
         make_project(self.tmp, SHOT + "\n" + SHOT)
         _, rep = self.validate()

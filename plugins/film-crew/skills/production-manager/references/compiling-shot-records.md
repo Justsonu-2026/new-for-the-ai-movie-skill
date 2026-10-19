@@ -27,7 +27,7 @@ How the production-manager turns approved department documents into complete sho
 | sound, music | sfx.md / music.md if done; else the screenplay's sound cues | `MISSING:` is acceptable before stage 10 only if marked "pending sound plan" |
 | vfx | vfx plan if done; else `none` only if the director flagged no VFX | request from vfx-supervisor |
 | transition_in / out | director shot list; editor's paper edit overrides after approval | derive in = previous out |
-| generation.mode | video-prompt-engineer's plan if done; else default by table in ai-model-adapters section 5 (mark `derived`) | — |
+| generation.mode | video-prompt-engineer's plan if done; else: first-last-frame when the end state carries the story (a reveal, a landing, an object changing state) — marked to-verify if the tool's support is unknown — otherwise image-to-video (mark `derived`) | — |
 | generation.start_frame / end_frame / motion | **you compose** from the fields above (section 2) | — |
 | generation.clip_length_s | duration_s + 1 s rounded up to the tool's nearest allowed length | — |
 
@@ -54,7 +54,11 @@ character locks are short. If a needed `short_lock` doesn't exist, request it �
 Describe only what is visible in that single instant. No sounds, no "then", no camera motion, no emotions
 without their visible form ("eyes wide, lips parted", not "shocked").
 
-**motion** — what changes between the two frames, in time order, with seconds:
+**motion** — what changes between the two frames, in time order, with seconds **in clip time** (the
+generated clip, `clip_length_s`, not the cut). A video model spreads whatever it is told across the whole
+clip, so write the handles in: e.g. for a 2 s cut generated as a 5 s clip — "0-1 s: holds still; 1-3 s:
+<the action>; 3-5 s: holds the end pose" — and record the keep range in `generation.keep` ("1.0-3.0 s").
+It contains:
 - one primary subject action, broken into beats with an end state;
 - at most one camera move (plus a focus pull if needed), with start and end;
 - at most one environmental motion (rain, smoke, crowd);
@@ -93,6 +97,8 @@ Compiled `motion`:
 - Paraphrasing a lock ("a young woman with dark hair") instead of pasting it verbatim.
 - Copying the director's emotional intent ("she is devastated") into frame text instead of the visible form.
 - Two primary actions in one shot ("she reads the label and runs downstairs") — return to the director.
+  More than 3-4 beats in `action_timeline` is a warning sign; the validator flags it.
+- Motion timed to the cut (2 s) while the clip is 5 s, so the model stretches the action — write clip time.
 - Light direction flipping between shots of the same setup without motivation — CONFLICT to cinematographer.
 - A prop in a state it has not reached yet (parcel opened before the opening scene) — CONFLICT to continuity.
 - end_frame that cannot be reached from start_frame within the duration — return to the director.

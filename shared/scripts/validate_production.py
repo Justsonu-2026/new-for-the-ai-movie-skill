@@ -303,6 +303,16 @@ def check_shot(rec, rep):
                 rep.warn(where, f"shot {rid}: clip_length_s is shorter than duration_s (no trim handles)")
         except (TypeError, ValueError):
             pass
+    beats = rec.get("action_timeline")
+    if isinstance(beats, list) and len(beats) > 4:
+        rep.warn(where, f"shot {rid}: {len(beats)} action beats; check the motion budget (one primary action)")
+    if mode in VIDEO_MODES:
+        try:
+            if float(gen.get("clip_length_s", 0)) - float(rec.get("duration_s", 0)) > 1.5 and not gen.get("keep"):
+                rep.warn(where, f"shot {rid}: clip is much longer than the cut; time 'motion' in clip time and "
+                                f"record generation.keep")
+        except (TypeError, ValueError):
+            pass
     chars = rec.get("characters")
     if isinstance(chars, list):
         for i, ch in enumerate(chars):

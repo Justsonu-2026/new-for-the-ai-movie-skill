@@ -65,7 +65,9 @@ speaker, delivery from the voice plan, key SFX and ambience; state "no music" wh
 If audio is done in post: say so in the record and keep lip movement in the prompt only for on-screen lines.
 
 **6 Length, trim, chaining.** Clip length = the tool's nearest allowed length ≥ shot duration + ~1 s for
-handles; record which seconds to keep. For continuous action across cuts, plan the chain: approved last
+handles; record which seconds to keep. Time the prompt's beats in **clip time**, filling the whole clip
+(a hold before the action, the action, a hold on the end state); a model given 2 s of action in a 5 s clip
+slows or pads it unpredictably. For continuous action across cuts, plan the chain: approved last
 frame of the take becomes the next shot's start frame; note where identity may drift on each hop.
 
 **7 Self-check and retry ladders.** Check every prompt against the quality list below. For each high-risk

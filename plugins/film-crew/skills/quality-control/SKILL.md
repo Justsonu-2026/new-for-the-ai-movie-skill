@@ -67,7 +67,8 @@ and the owner: image-prompt-engineer edit, vfx-supervisor cleanup, video-prompt-
 REDO: identity, composition or action wrong — regenerate with a changed prompt. NOT-VERIFIABLE: resolution
 or missing specs prevent judgment — say what is needed. Never upgrade a verdict to be agreeable.
 
-**6 Report and handoff.** Write the report; list blockers first. For the final stage, complete the delivery
+**6 Report and handoff.** Write the report; list blockers first. In your reply to the user, give every
+blocker with its owner (the department that must fix it) and the fix in one line each. For the final stage, complete the delivery
 checklist in [references/delivery-checklist.md](references/delivery-checklist.md).
 
 ## Boundaries

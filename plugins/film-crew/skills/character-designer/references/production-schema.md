@@ -163,6 +163,7 @@ generation:
   end_frame: "<self-contained still description of the last frame>"
   motion: "<only what changes between the two frames, in time order>"
   clip_length_s: 5                    # generate longer than duration_s, trim in edit
+  keep: "0.5-4.5 s"                   # the part of the clip used in the cut (motion is timed in clip time)
   risks: ["text legibility on label: add label in post if unreadable (see VFX)"]
 ```
 
@@ -172,7 +173,9 @@ Rules for the compiled shot record:
   full lock for each in-focus primary subject and the `short_lock` for background or soft-focus elements;
   always paste the style lock. Target 150-300 words per frame text (the validator warns above 350): long
   prompts dilute what matters and may exceed tool limits.
-- `motion` states one primary subject action and at most one camera move, with an end state.
+- `motion` states one primary subject action and at most one camera move, with an end state, timed in
+  clip time over the whole `clip_length_s` (holds before and after the action), with `keep` naming the
+  range used in the cut.
 - Every ID referenced must exist as a record. Every value must trace to an owner document; otherwise use
   `MISSING:` and route the request to the owner.
 
