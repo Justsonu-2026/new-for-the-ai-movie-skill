@@ -66,8 +66,9 @@ If audio is done in post: say so in the record and keep lip movement in the prom
 
 **6 Length, trim, chaining.** Clip length = the tool's nearest allowed length ≥ shot duration + ~1 s for
 handles; record which seconds to keep. Time the prompt's beats in **clip time**, filling the whole clip
-(a hold before the action, the action, a hold on the end state); a model given 2 s of action in a 5 s clip
-slows or pads it unpredictably. For continuous action across cuts, plan the chain: approved last
+(a hold of about 0.5 s before the action, the action, a hold on the end state); a model given 2 s of
+action in a 5 s clip slows or pads it unpredictably. The keep range never starts at 0.0 s — generated clips
+settle in their first frames, and the film-editor will not cut from 0.0. For continuous action across cuts, plan the chain: approved last
 frame of the take becomes the next shot's start frame; note where identity may drift on each hop.
 
 **7 Self-check and retry ladders.** Check every prompt against the quality list below. For each high-risk

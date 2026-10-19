@@ -38,12 +38,14 @@ Maya gets to the apartment. She is tired and sad because her mom is sick. She kn
 answers. She says "I have a delivery for apartment 4B, it's very important, I came all the way across the
 city in the rain." He says "There's no 4B here, this building only has three floors." She is confused.
 She looks at the parcel and sees her own address. She realizes the parcel is for her.""",
-         regex=[("scene-heading", r"(INT\.|EXT\.)", "last_message")],
-         llm="""PASS if the scene is in screenplay format (scene heading, action, character cues), shows feelings
-through visible behavior instead of stating "sad"/"confused", cuts the expository line about crossing the
-city, gives the label reveal a moment to land, contains no camera directions like "we see" or "pan to",
-and lists the changes with reasons.
-FAIL if interior states are stated in action lines, the exposition line is kept, or camera directions appear."""),
+         regex=[("scene-heading", r"(INT\.|EXT\.)", "last_message"), ("vfx-flag", r"\[\[VFX", "last_message")],
+         llm="""Judge only these four points. PASS if all hold:
+1. Screenplay format: a scene heading, action lines and character cues.
+2. Feelings are shown through visible behavior; the action lines do not state "sad", "tired" or "confused".
+3. No new plot facts beyond the draft (for example who sent the parcel or a new relationship) unless they
+   are explicitly listed as proposals or changes.
+4. A list of changes with reasons is given.
+FAIL if any point is not met."""),
     dict(name="character-designer-sheet", skill="character-designer", turns=15, prompt="""
 I need a character design I can use to keep a character consistent across AI images: Ana, a 30-year-old
 lighthouse keeper in 1950s Portugal who wears a work coat. Give me the full character sheet spec in
@@ -125,32 +127,37 @@ Storyboard scene SC01 of the production in this folder from its shot records and
 sheet.""",
          files=[("panels-file", "09_storyboard/storyboard.md"), ("sheet", "09_storyboard/storyboard.html")],
          tool=("ran-builder", "Bash", "build_storyboard"),
-         llm_target="09_storyboard/storyboard.md",
-         llm="""PASS if the file has a panel for every SC01 shot, moving shots have start and end panels, each panel
-states composition positions (thirds, foreground/background), camera notes, duration, and no panel adds an
-event that is not in the shot records.
-FAIL if shots are missing panels or panels invent new story events."""),
+         # deterministic checks over the (long) panel file: first and last shot covered, end panels for moves,
+         # composition and camera notes present
+         regex=[("first-shot", r"SB-SC01-SH010-P1", {"source": "file", "path": "09_storyboard/storyboard.md"}),
+                ("last-shot", r"SB-SC01-SH100-P1", {"source": "file", "path": "09_storyboard/storyboard.md"}),
+                ("end-panels", r"frame_moment:\s*end", {"source": "file", "path": "09_storyboard/storyboard.md"}),
+                ("composition", r"composition:", {"source": "file", "path": "09_storyboard/storyboard.md"})],
+         llm="""PASS if the reply says the storyboard for SC01 was written and the sheet was built, and does not
+claim to have added shots or story events. FAIL otherwise."""),
     dict(name="image-prompts-keyframe", skill="image-prompt-engineer", turns=30, timeout=900, fixture=True, prompt="""
 Write the image prompts for the start and end keyframes of shot SC01-SH010 in this production. My image
 tool accepts up to 3 reference images. Reply with the prompts.""",
-         llm="""PASS if the reply gives a start-frame and an end-frame prompt, each pasting the character's and
-location's fixed lock text verbatim from the project files, listing at most 3 reference images each with
-a stated role, and describing only what the shot record specifies (no added props, people or weather).
-FAIL if locks are paraphrased, references exceed 3 or lack roles, or content not in the shot record is added."""),
+         regex=[("lock-verbatim", r"tired dark brown almond eyes", "last_message")],
+         llm="""Judge only these three points. PASS if all hold:
+1. There is a start-frame prompt and an end-frame prompt for SC01-SH010.
+2. Each prompt lists no more than 3 reference images, each with a stated role (what it controls).
+3. Neither prompt adds props, people, weather or actions that the reply itself does not attribute to the
+   shot record.
+FAIL if any point is not met."""),
     dict(name="video-prompt-veo", skill="video-prompt-engineer", turns=15, prompt="""
 Write a Veo 3.1 image-to-video prompt for this shot. The start keyframe is approved.
 Shot SC03-SH020, 4 s in the cut, MCU high angle, static camera, focus racks from the label to her eyes at
 2.5 s. Action: she turns the parcel over, wipes the label with her thumb, looks up at the window and holds.
 At 3.0 s she says quietly "That's my street." Rain on the window behind her. No music.""",
-         regex=[("quoted-line", r"\"That's my street\.\"", "last_message")],
-         llm="""Judge only these five points. PASS if all hold:
-1. The prompt describes what moves or changes (the parcel turn, the thumb wipe, the look up) rather than
-   re-describing the whole picture.
-2. It adds no action, character or camera move beyond the ones in the request.
-3. The camera instruction is phrased positively (for example "locked off", "remains still").
-4. The line "That's my street." appears in quotes with a speaker or attribution.
-5. A clip length of 4, 6 or 8 seconds is chosen.
-FAIL if any of the five points is not met."""),
+         regex=[("quoted-line", r"\"That's my street\.\"", "last_message"), ("sfx", r"SFX:", "last_message"),
+                ("clip-length", r"\b(4|6|8)\s?(s|sec|seconds)\b", "last_message")],
+         llm="""Judge only these three points. PASS if all hold:
+1. The prompt adds no action, character or camera move beyond: turning the parcel, wiping the label,
+   looking up and holding, the focus rack, the spoken line, and rain on the window.
+2. The camera instruction is phrased positively (for example "locked off" or "remains still").
+3. The prompt describes the motion over time rather than only describing a still picture.
+FAIL if any point is not met."""),
     dict(name="voice-director-casting", skill="voice-director", turns=15, prompt="""
 Cast voices and give delivery notes for these lines in my AI short.
 LAN (30s, tired noodle vendor): "Almost closing." / "Hey!" / "Ah Ma." (the last one barely audible, she
@@ -256,7 +263,8 @@ def main():
             with open(os.path.join(g, "no-skill.md"), "w") as fh:
                 fh.write(front({"type": "tool_used", "tool": "Skill", "min": 0, "max": 0, "arm": "both"}))
         for name, pattern, target, *flags in c.get("regex", []):  # JS regex: case-insensitivity via flags, not (?i)
-            fm = {"type": "regex", "pattern": sq(pattern), "target": target}
+            tgt = target if isinstance(target, str) else "{ source: file, path: " + target["path"] + " }"
+            fm = {"type": "regex", "pattern": sq(pattern), "target": tgt}
             if flags:
                 fm["flags"] = flags[0]
             with open(os.path.join(g, f"{name}.md"), "w") as fh:

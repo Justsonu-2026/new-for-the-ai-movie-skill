@@ -68,7 +68,8 @@ names: can you tell who speaks?). Cut lines that say what the image already show
 conflict. Parentheticals only when the delivery is not obvious from context.
 
 **6 Visual and producibility pass.** Replace interior states with visible behavior ("her hands won't stop
-shaking", not "she is terrified"). Flag readable text that carries story with `[[VFX: text]]` notes. Check
+shaking", not "she is terrified"). Flag **every** readable text you put on screen — labels, signs, phone
+screens, notes — with a `[[VFX: text]]` note, including text you added while dramatizing. Check
 the AI-production risks in rewrite-diagnostics.md (crowds, fine hand work, many characters in contact).
 
 **7 Timing pass.** Estimate each scene: dialogue at about 2.5 words per second of speech (typical
