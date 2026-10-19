@@ -47,7 +47,9 @@ this order:
 **Lock budget:** paste the full lock only for in-focus primary subjects. For anything small, soft-focus,
 partly visible or in the background, paste its `short_lock` instead (owned by the designer, also
 verbatim). In a close-up of a hand on a prop, the location may be one short lock; in an empty wide, the
-character locks are short. If a needed `short_lock` doesn't exist, request it — never write your own.
+character locks are short. If a needed `short_lock` doesn't exist, request it — never write your own. Shortening means swapping
+the full lock for the short lock, **never dropping it**: every character, costume, prop and location listed
+in the shot must appear in the frame text through one of its two locks (the validator checks this).
 5. Light: key direction and quality, fill, rim, practicals, shadows; time of day; weather.
 6. Palette anchors (3-5 named colors) and the style lock verbatim.
 

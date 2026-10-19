@@ -235,5 +235,6 @@ overwrite an approved asset; write a new version.
 7. Continuity: within one scene, a character keeps one costume unless a shot declares `costume_change: true`.
 8. Staleness: every `depends_on` entry `name@N` matches the current `version` of that artifact (warning).
 9. Locks (warnings): word counts, character lock without the name or garments, style lock without an aspect
-   ratio, no "no ..." phrasing; frame texts over 350 words.
+   ratio, no "no ..." phrasing; frame texts over 350 words; every character, costume, prop and location
+   listed in a shot appears in its frame texts through its full or short lock, pasted verbatim.
 10. Counts of `MISSING:`, `ASSUMPTION:`, `CONFLICT:` and `OPEN-QUESTION:` markers per file (report).

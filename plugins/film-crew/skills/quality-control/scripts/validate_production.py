@@ -356,6 +356,42 @@ def check_references(by_id, rep):
                     rep.err(rec["_where"], f"{rid} uses prop state '{prop_id}:{state}', not listed in {prop_id}.states")
 
 
+def norm(text):
+    return " ".join(str(text).split()).lower()
+
+
+def check_lock_presence(by_id, rep):
+    """Each character, costume, prop and location in a shot must appear in its frame texts through its
+    identity_lock or short_lock pasted verbatim (whitespace and case ignored) - the main consistency control."""
+    for rec in by_id.values():
+        if rec.get("record") != "shot":
+            continue
+        gen = rec.get("generation") or {}
+        frames = {f: norm(gen.get(f)) for f in ("start_frame", "end_frame") if not is_empty(gen.get(f))}
+        if not frames:
+            continue
+        wanted = []
+        for ch in rec.get("characters") or []:
+            if isinstance(ch, dict):
+                wanted += [ch.get("id"), ch.get("costume")]
+        for pr in rec.get("props") or []:
+            if isinstance(pr, dict):
+                wanted.append(pr.get("id"))
+        loc = rec.get("location")
+        if isinstance(loc, dict):
+            wanted.append(loc.get("id"))
+        for wid in [w for w in wanted if w in by_id]:
+            target = by_id[wid]
+            locks = [norm(target.get(k)) for k in ("identity_lock", "short_lock") if isinstance(target.get(k), str)]
+            locks = [l for l in locks if l]
+            if not locks:
+                continue
+            for fname, text in frames.items():
+                if not any(l in text for l in locks):
+                    rep.warn(rec["_where"], f"shot {rec['id']}: generation.{fname} does not contain the "
+                                            f"identity_lock or short_lock of {wid} verbatim")
+
+
 def check_scenes(by_id, rep):
     shots_by_scene = {}
     for rec in by_id.values():
@@ -419,6 +455,7 @@ def main():
     records, headers, markers = load_project(args.project_dir, rep)
     by_id = check_records(records, rep)
     check_references(by_id, rep)
+    check_lock_presence(by_id, rep)
     check_scenes(by_id, rep)
     check_staleness(records, headers, rep)
     counts = {}

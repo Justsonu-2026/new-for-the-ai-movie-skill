@@ -162,7 +162,10 @@ Before handing off the master document, all must be true:
 - Every screenplay scene has a scene record and at least one shot; every line of dialogue appears in a shot.
 - Every shot has start and end states, one primary action, at most two combined camera moves, a duration,
   and (for video modes) `start_frame`, `motion`, `clip_length_s`; first-last-frame shots have `end_frame`.
-- Identity locks appear verbatim in each shot's frame text for every character, location and key prop shown.
+- Every character, costume, prop and location listed in a shot appears in its frame texts through its full
+  lock or short lock, verbatim — the validator's "does not contain the identity_lock or short_lock"
+  warnings are cleared, or each remaining one is explained (e.g. the character has left frame by the end
+  frame, and is then removed from that shot's `characters`/`props` end state).
 - Sum of shot durations within ±10% of the target runtime, or the difference is explained in the log.
 - Every ASSUMPTION is listed in the log's open-assumptions section.
 

@@ -245,6 +245,20 @@ class ValidatorTests(unittest.TestCase):
         self.assertIn("5 action beats", joined)
         self.assertIn("record generation.keep", joined)
 
+    def test_lock_presence_in_frames(self):
+        make_project(self.tmp)
+        _, rep = self.validate()
+        joined = "\n".join(rep["warnings"])
+        # the fixture's frame text pastes no locks, so every listed subject is reported
+        for wid in ("CH-ANA", "CO-ANA-01", "PR-LAMP", "LOC-TOWER"):
+            self.assertIn(f"short_lock of {wid} verbatim", joined)
+        lock = "A 30-year-old woman with a long face, olive skin, dark eyes and a grey-streaked braid."
+        make_project(self.tmp, SHOT.replace('start_frame: "Wide low-angle shot of a woman',
+                                            f'start_frame: "{lock} Wide low-angle shot of a woman'))
+        _, rep = self.validate()
+        self.assertNotIn("start_frame does not contain the identity_lock or short_lock of CH-ANA",
+                         "\n".join(rep["warnings"]))
+
     def test_duplicate_id(self):
         make_project(self.tmp, SHOT + "\n" + SHOT)
         _, rep = self.validate()
