@@ -1,0 +1,40 @@
+{
+  "skill_name": "production-designer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Design the locations for my script: a flooded subway station and the maintenance office above it.",
+      "expected_output": "Two location records with floor plans, landmarks, exits, light sources and identity locks, plus plate specs.",
+      "files": [],
+      "expectations": [
+        "Each location has a 'record: location' with landmarks and light_sources",
+        "Each location has a text floor plan with exits marked",
+        "Identity locks contain no lighting or weather words",
+        "Plate specifications name camera position and time of day"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "List the props for this scene: a woman finds a letter, burns it, and keeps the envelope.",
+      "expected_output": "Prop records with every state change (sealed, opened, burning, ashes; envelope kept) and the scene each starts.",
+      "files": [],
+      "expectations": [
+        "A prop record exists for the letter with multiple states such as sealed/opened/burnt",
+        "Each state has the scene or shot where it begins",
+        "The envelope is a separate prop record or a clearly separate state track",
+        "State IDs use the PROP:STATE format"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The street in my film needs a neon sign with the shop name readable in every shot.",
+      "expected_output": "Keeps the sign but flags readable text as an AI risk for VFX and keeps the text minimal.",
+      "files": [],
+      "expectations": [
+        "The readable text is flagged for vfx-supervisor or post insertion",
+        "The response keeps the sign text short",
+        "No real trademark or brand name is used"
+      ]
+    }
+  ]
+}

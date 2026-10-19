@@ -1,0 +1,12 @@
+{
+  "name": "film-crew",
+  "displayName": "Film Crew",
+  "version": "1.0.0",
+  "description": "Twenty cooperating film-production skills: story writer, screenwriter, character designer, production designer, visual style, film/action/animation directors, cinematographer, script supervisor, storyboard artist, image and video prompt engineers, voice, music, sound, VFX, editor, QC and the production manager.",
+  "author": {
+    "name": "Justsonu-2026"
+  },
+  "repository": "https://github.com/Justsonu-2026/new-for-the-ai-movie-skill",
+  "license": "MIT",
+  "keywords": ["filmmaking", "screenplay", "storyboard", "character-sheet", "shot-list", "ai-video", "prompt-engineering"]
+}

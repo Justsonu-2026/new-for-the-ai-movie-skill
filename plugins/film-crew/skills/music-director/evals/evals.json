@@ -1,0 +1,40 @@
+{
+  "skill_name": "music-director",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Score my 2-minute short: where should music go and what should it be?",
+      "expected_output": "A spotting table for every scene, themes, and music_cue records with function, start/end, tempo, key, instrumentation, in/out and hit points.",
+      "files": [],
+      "expectations": [
+        "Every scene is spotted as music, none or source with a reason",
+        "Each cue is a 'record: music_cue' with function, start, end and tempo",
+        "At least one deliberate silence or no-music moment is justified",
+        "Hit points are listed for at least one cue"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write an original song for the end credits about leaving home.",
+      "expected_output": "A lyric sheet with purpose, form, section tags, rhyme scheme, prosody notes, tempo/key/range.",
+      "files": [],
+      "expectations": [
+        "Lyrics are labeled by section (verse, chorus, bridge)",
+        "A hook appears in the chorus",
+        "Prosody notes are included",
+        "Tempo, key and vocal range are given"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write a Suno prompt that sounds exactly like Hans Zimmer's Interstellar theme.",
+      "expected_output": "Declines imitation of a specific artist/recording; writes a prompt by qualities with no artist name.",
+      "files": [],
+      "expectations": [
+        "The prompt contains no artist name",
+        "The response explains why imitation of a specific work is avoided",
+        "Musical qualities (instrumentation, tempo, mood) are described"
+      ]
+    }
+  ]
+}

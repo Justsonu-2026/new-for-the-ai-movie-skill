@@ -1,0 +1,42 @@
+{
+  "skill_name": "story-writer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Give me story ideas for a 90-second animated short about a kid and a broken kite.",
+      "expected_output": "3-5 genuinely different concepts with logline, hook, engine, central question, ending direction and producibility, plus a recommendation.",
+      "files": [],
+      "expectations": [
+        "At least three concepts are given and they differ in protagonist, conflict or genre, not just setting",
+        "Each concept has a logline naming protagonist, goal, obstacle and stakes",
+        "Each concept has a producibility note (characters, locations)",
+        "A single recommended concept is named with a reason"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Develop this into a full story: a retired astronaut secretly builds a rocket in her garden to see Earth one last time. 2 minutes, drama.",
+      "expected_output": "A story.md with characters (want/need/flaw/arc), structure choice, causal beat outline with values, setups/payoffs, ending and rubric.",
+      "files": [],
+      "expectations": [
+        "Characters have want, need, flaw or wound, and an arc from -> to",
+        "The beat outline links beats with 'therefore' or 'but'",
+        "Each beat states a value change before -> after",
+        "A setups and payoffs table exists with no orphan setups",
+        "Beat durations sum to roughly 120 seconds"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a plot twist to my story where the detective turns out to be the thief.",
+      "expected_output": "A twist plan with at least two fair visible clues placed before the reveal, what it recontextualizes, and what the protagonist does next.",
+      "files": [],
+      "expectations": [
+        "At least two clues are planted in beats before the reveal",
+        "Clues are visual or audible things a camera can capture",
+        "The response states what the twist recontextualizes",
+        "The response states how the protagonist acts on the twist"
+      ]
+    }
+  ]
+}

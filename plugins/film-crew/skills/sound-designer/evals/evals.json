@@ -1,0 +1,39 @@
+{
+  "skill_name": "sound-designer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Do the sound design for scene 2: a chase across wet rooftops at night.",
+      "expected_output": "Ambience bed, sfx_cue records with sync points, layers and perspective, transitions and silence, mix intent.",
+      "files": [],
+      "expectations": [
+        "An ambience bed is described for the scene",
+        "Sync sounds are 'record: sfx_cue' blocks with sync_point and layer",
+        "Foley for footsteps on the wet surface is included",
+        "A transition decision (J/L cut, bridge or silence) is stated for the scene cut"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What loudness should I master to for YouTube and for broadcast?",
+      "expected_output": "Gives commonly cited targets with a clear instruction to confirm the platform's current spec, plus true peak.",
+      "files": [],
+      "expectations": [
+        "A broadcast target (EBU R128 -23 LUFS or ATSC -24 LKFS) is given",
+        "The response says to confirm the platform's current spec",
+        "True peak is mentioned"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write SFX generation prompts for the door slam and the glass breaking in scene 4.",
+      "expected_output": "Concrete prompts with source, material, action, space, distance and duration.",
+      "files": [],
+      "expectations": [
+        "Each prompt names material and action",
+        "Each prompt states space or distance",
+        "Each prompt gives a duration"
+      ]
+    }
+  ]
+}

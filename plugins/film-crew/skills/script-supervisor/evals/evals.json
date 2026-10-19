@@ -1,0 +1,39 @@
+{
+  "skill_name": "script-supervisor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Do a continuity pass on scenes 1-3 of my project.",
+      "expected_output": "A continuity bible with story timeline, per-scene continuity records, state change list with causes, coverage map, and a report with severities and owners.",
+      "files": [],
+      "expectations": [
+        "A story timeline assigns day/night and time of day to each scene",
+        "Each scene has a 'record: continuity' block",
+        "A coverage map lists screenplay lines and the shots that cover them",
+        "Issues have severity (BLOCKER/MAJOR/MINOR) and an owner"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "In shot 4 she holds the cup in her right hand, in shot 5 in her left. Is that a problem?",
+      "expected_output": "Identifies a MAJOR continuity error, names both sources, routes to the owner with a proposed fix.",
+      "files": [],
+      "expectations": [
+        "The issue is classified with a severity",
+        "Both sources (shots) are named",
+        "An owner and a proposed fix are given"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Check that my shot list covers the whole screenplay.",
+      "expected_output": "A lined-script style coverage map, uncovered lines flagged as BLOCKER, extra events flagged.",
+      "files": [],
+      "expectations": [
+        "Each screenplay line or beat is mapped to shot IDs",
+        "Uncovered lines are flagged as BLOCKER",
+        "Shots showing events not in the screenplay are flagged"
+      ]
+    }
+  ]
+}

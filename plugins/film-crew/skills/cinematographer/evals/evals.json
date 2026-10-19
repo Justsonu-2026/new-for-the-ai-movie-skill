@@ -1,0 +1,39 @@
+{
+  "skill_name": "cinematographer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "DP pass on this shot list: [5 shots of a night conversation in a car under streetlights].",
+      "expected_output": "Per-shot lens mm, aperture/DOF, height, position, support, movement execution, and a motivated lighting setup with directions and colors.",
+      "files": [],
+      "expectations": [
+        "Every shot has a focal length in mm and an aperture or DOF statement",
+        "Lighting sources are motivated (streetlights, dashboard) with direction and color temperature or named color",
+        "Camera height and position are given per shot",
+        "Matched shot-reverse-shot pairs use the same lens"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Which lens for a close-up that should feel claustrophobic in a tiny bathroom?",
+      "expected_output": "Recommends a wide focal length close to the subject with reason, notes distortion, gives visible-effect wording for generators.",
+      "files": [],
+      "expectations": [
+        "A wide focal length (roughly 18-28 mm) is recommended",
+        "The reason connects lens and distance to claustrophobia",
+        "Generator-friendly visible-effect wording is provided"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The director wants a long-lens push-in but the room is only 3 meters deep.",
+      "expected_output": "Explains the physical constraint and proposes the closest workable alternative with its effect, as a proposal to the director.",
+      "files": [],
+      "expectations": [
+        "The physical constraint is explained",
+        "An alternative is proposed and its effect described",
+        "The response frames it as a proposal rather than overriding the director"
+      ]
+    }
+  ]
+}

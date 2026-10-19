@@ -1,0 +1,41 @@
+{
+  "skill_name": "production-manager",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to make a 60-second AI short film about a street cat who saves a lighthouse. Set up the production and tell me the plan.",
+      "expected_output": "Creates 00_brief.md and PRODUCTION_LOG.md, records assumptions for missing specs, presents the staged pipeline with the first gate.",
+      "files": [],
+      "expectations": [
+        "A 00_brief.md file is created with runtime 60 s recorded and other unknown specs marked ASSUMPTION or asked as questions",
+        "A PRODUCTION_LOG.md file is created with a stage status table",
+        "The response names story-writer as the next department and stops at (or explains) the story approval gate",
+        "The response does not write the story or screenplay itself"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here is my project folder at examples/broken-project. Compile the shot records for SC01 and tell me what's missing.",
+      "expected_output": "Reads department documents, compiles record: shot blocks, writes MISSING: for fields with no owner source, runs the validator and reports requests per owner.",
+      "files": [],
+      "expectations": [
+        "Shot records are written as yaml blocks starting with 'record: shot'",
+        "Fields without an owner source are written as 'MISSING:' with the owner named, not invented",
+        "The validator script is run and its error count is reported",
+        "Requests are grouped by owning department"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The editor says scene 2 is too long and wants to cut Maya's second line. The screenplay is locked. Handle it.",
+      "expected_output": "Writes a change request with target, reason and impact list traced via depends_on, routes to the screenwriter, and does not edit the screenplay itself.",
+      "files": [],
+      "expectations": [
+        "A change request with an ID like CR-001 is written with target, change, reason and impact fields",
+        "The impact list names downstream artifacts such as direction, shots and voice lines",
+        "The screenplay text is not modified by the production manager",
+        "Affected downstream artifacts are described as becoming STALE until reviewed"
+      ]
+    }
+  ]
+}

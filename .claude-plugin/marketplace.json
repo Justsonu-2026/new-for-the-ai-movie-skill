@@ -1,0 +1,16 @@
+{
+  "name": "ai-film-crew",
+  "description": "A modular AI filmmaking crew: story, screenplay, characters, design, direction, camera, continuity, storyboard, AI prompts, sound, edit, QC and a production manager that compiles a generation-ready master document.",
+  "owner": {
+    "name": "Justsonu-2026"
+  },
+  "plugins": [
+    {
+      "name": "film-crew",
+      "source": "./plugins/film-crew",
+      "description": "Twenty cooperating film-production skills with a shared production schema, change control and a master production document for AI image and video generation.",
+      "category": "creative",
+      "tags": ["filmmaking", "screenwriting", "storyboard", "character-design", "ai-video", "production"]
+    }
+  ]
+}

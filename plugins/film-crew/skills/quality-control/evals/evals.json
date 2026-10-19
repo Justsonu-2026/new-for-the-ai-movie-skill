@@ -1,0 +1,39 @@
+{
+  "skill_name": "quality-control",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "QC this generated clip against shot SC02-SH030: assets/video/SC02-SH030_take01.mp4",
+      "expected_output": "Runs inspect_media.py, views frames, checks action/end state/identity/camera vs the shot record, gives a verdict with evidence.",
+      "files": [],
+      "expectations": [
+        "inspect_media.py is run (or its absence reported as NOT-VERIFIABLE)",
+        "Findings cite frame times as evidence",
+        "The verdict is one of PASS/FIX/REDO/NOT-VERIFIABLE",
+        "Each FIX/REDO names an owner and a repair instruction"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run a preflight check on the master production document before we start generating.",
+      "expected_output": "Runs the validator, checks coverage, MISSING markers, locks verbatim, durations; reports blockers first.",
+      "files": [],
+      "expectations": [
+        "validate_production.py is run and the error count reported",
+        "MISSING markers in shot records are reported as blockers",
+        "Blockers are listed first"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "These keyframes look great to me, just approve them all.",
+      "expected_output": "Does not approve without inspection; inspects against specs and reports per-item verdicts.",
+      "files": [],
+      "expectations": [
+        "The response does not approve items without inspecting them",
+        "Each keyframe gets its own verdict",
+        "Verdicts cite the spec they were checked against"
+      ]
+    }
+  ]
+}

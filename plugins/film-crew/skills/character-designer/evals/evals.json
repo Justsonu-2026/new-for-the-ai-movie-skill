@@ -1,0 +1,41 @@
+{
+  "skill_name": "character-designer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Design the main character for my film: Ana, a 30-year-old lighthouse keeper in 1950s Portugal. I need a character sheet for AI image generation.",
+      "expected_output": "A character file with a complete record: character and record: costume, identity locks within word limits, and turnaround/expression sheet specs.",
+      "files": [],
+      "expectations": [
+        "A 'record: character' block includes height_cm, identity_lock, face, hair, eyes, silhouette and distinguishing_features",
+        "The identity lock is 40-80 words and contains no emotion or personality words",
+        "A costume record with materials and colors with hex values is included",
+        "A turnaround sheet spec lists front, three-quarter, side, three-quarter back and back views"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's the generated turnaround for Ana. The scar is on the right cheek in the side view but on the left in the front view. Is it approved?",
+      "expected_output": "A drift review that flags the mirror-flip, gives a FIX verdict with a single targeted instruction, and does not approve.",
+      "files": [],
+      "expectations": [
+        "The verdict is not APPROVE",
+        "The scar side inconsistency is identified explicitly",
+        "A single targeted fix instruction is given that keeps everything else unchanged",
+        "The response refers to the approved spec for the correct side"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "My film has three kids who are siblings. Make sure they don't get mixed up in wide shots.",
+      "expected_output": "Distinct silhouettes, unique color anchors per character, height lineup, and a lineup sheet spec.",
+      "files": [],
+      "expectations": [
+        "Each sibling has a different silhouette description",
+        "Each sibling has a color anchor not shared with the others",
+        "Heights in cm are given and differ",
+        "A lineup sheet at one scale is specified"
+      ]
+    }
+  ]
+}

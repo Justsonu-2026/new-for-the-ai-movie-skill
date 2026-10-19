@@ -1,0 +1,41 @@
+{
+  "skill_name": "action-director",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Choreograph a rooftop fight between a courier (small, fast, untrained) and a big bodyguard. It should last about 30 seconds.",
+      "expected_output": "An action plan with purpose, character styles, phases with momentum, geography, numbered phrases with action -> reaction -> consequence, shot mapping, continuity.",
+      "files": [],
+      "expectations": [
+        "Moves are written as numbered phrases with action, reaction and consequence",
+        "Momentum swings at least once",
+        "Each character's fighting style reflects their description (fast evasion vs power)",
+        "Every phrase is mapped to shots with an end state",
+        "Injuries or damage are listed for continuity with a starting shot"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Plan a chase through a night market, about 40 seconds.",
+      "expected_output": "A route with segments, gap curve, obstacles and choices, consistent screen direction, and shot patterns.",
+      "files": [],
+      "expectations": [
+        "The route is split into segments with distinct obstacles",
+        "The distance between pursuer and pursued is tracked and changes",
+        "Screen direction for both characters is stated and consistent",
+        "The ending changes the story situation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our generated fight clips keep showing tangled arms. Fix the plan.",
+      "expected_output": "Simplifies to one decisive move per 2-4 s clip, separates silhouettes, puts reactions in separate shots.",
+      "files": [],
+      "expectations": [
+        "Clips are limited to one decisive move or short phrase",
+        "Reactions are moved into separate shots",
+        "The response suggests keeping silhouettes separated or moving laterally to camera"
+      ]
+    }
+  ]
+}

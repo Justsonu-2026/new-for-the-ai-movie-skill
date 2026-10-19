@@ -1,0 +1,42 @@
+{
+  "skill_name": "screenwriter",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Turn this story into a screenplay: [a 5-beat story about a courier who discovers the parcel is addressed to herself]. Target 90 seconds.",
+      "expected_output": "A Fountain screenplay plus scene_index.md with a scene record and scene card for each scene and a changes table.",
+      "files": [],
+      "expectations": [
+        "The screenplay uses Fountain scene headings starting with INT. or EXT.",
+        "A scene_index.md has a header with id: screenplay and one 'record: scene' block per scene",
+        "Each scene record has purpose and value_change",
+        "Action lines describe visible behavior rather than internal thoughts",
+        "Estimated runtime is stated and within about 10% of 90 seconds"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This scene drags. Fix it: [a 2-page scene where two characters explain their backstory to each other].",
+      "expected_output": "A diagnosis naming exposition problems, a rewrite that dramatizes or cuts exposition, and a changes table with reasons.",
+      "files": [],
+      "expectations": [
+        "The diagnosis identifies exposition delivered without conflict",
+        "The rewrite is shorter than the original",
+        "A changes table lists each cut or change with a reason",
+        "No camera directions such as 'we see' or 'pan to' are added"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write the dialogue for the confrontation between Lena and her brother about selling their father's boat.",
+      "expected_output": "Dialogue with subtext and distinct voices, short lines that fit shots, minimal parentheticals.",
+      "files": [],
+      "expectations": [
+        "The characters do not state the core emotional issue directly in every line (subtext is present)",
+        "The two characters' voices differ in sentence length or vocabulary",
+        "Most lines are under about 12 words",
+        "Parentheticals are used sparingly (fewer than one per three lines)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "skill_name": "storyboard-artist",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Storyboard scene 3 from my shot records.",
+      "expected_output": "Panel records per shot (two for moves/reveals) with composition on a thirds grid, arrow notation, durations, and the built HTML sheet.",
+      "files": [],
+      "expectations": [
+        "Every shot has at least one 'record: panel' block with an ID like SB-SC03-SH010-P1",
+        "Shots with camera moves have start and end panels",
+        "Compositions state positions on the thirds grid and foreground/background",
+        "The build_storyboard.py script is run and the HTML file is produced or the reason it was not is stated"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Make the storyboard more exciting — add a shot of the villain watching from the roof.",
+      "expected_output": "Declines to add a story event, explains it belongs to the director/screenwriter, offers to raise a proposal.",
+      "files": [],
+      "expectations": [
+        "No new villain shot is added to the storyboard",
+        "The response explains storyboard panels render approved shots only",
+        "A proposal to the film-director or screenwriter is offered"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Give me sketch prompts for each panel of scene 1 in rough storyboard style.",
+      "expected_output": "One consistent rough-sketch prompt per panel including the composition description and aspect ratio.",
+      "files": [],
+      "expectations": [
+        "Each panel has a sketch prompt",
+        "All prompts share the same storyboard style wording",
+        "Each prompt includes the panel's composition and the aspect ratio"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "skill_name": "image-prompt-engineer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write the image prompts for my character sheets and the keyframes of scene 1. I use a tool that accepts up to 3 reference images.",
+      "expected_output": "A generation plan in dependency order, image_prompt records with locks verbatim, references with roles (max 3), must_match lists.",
+      "files": [],
+      "expectations": [
+        "A generation plan orders character sheets before keyframes",
+        "Each prompt record has references with an explicit role and never more than 3 references",
+        "Identity locks from the character file appear verbatim in the prompts",
+        "Each record has a must_match checklist"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This keyframe is perfect except her bag is on the wrong hip. Fix it.",
+      "expected_output": "A single edit prompt that changes only the bag side and explicitly keeps face, outfit, pose, light and composition.",
+      "files": [],
+      "expectations": [
+        "The edit prompt changes only the bag position",
+        "The prompt explicitly states what must stay unchanged",
+        "The bag side is stated unambiguously"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Make the prompt more epic: add dramatic lightning and a second character in the background.",
+      "expected_output": "Declines to add content not in the shot record, explains ownership, offers to route a proposal.",
+      "files": [],
+      "expectations": [
+        "No lightning or extra character is added to the prompt",
+        "The response explains that prompt content comes from approved records",
+        "A route to the owning department is offered"
+      ]
+    }
+  ]
+}

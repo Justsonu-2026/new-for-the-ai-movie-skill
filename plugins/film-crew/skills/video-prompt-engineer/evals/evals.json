@@ -1,0 +1,40 @@
+{
+  "skill_name": "video-prompt-engineer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write the video prompts for scene 2 for Veo 3.1. Keyframes are approved.",
+      "expected_output": "One video_prompt per shot with mode, Veo syntax (quoted dialogue, SFX:, Ambient noise:), one action and at most one camera move, end state, clip length from 4/6/8 s.",
+      "files": [],
+      "expectations": [
+        "Each shot has a 'record: video_prompt' block with a mode",
+        "Clip lengths are 4, 6 or 8 seconds and at least the shot duration",
+        "Dialogue appears in quotation marks with a speaker; SFX uses the 'SFX:' prefix",
+        "Each prompt has one primary action and an explicit end state",
+        "Image-to-video prompts describe motion rather than re-describing the image"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This shot needs her to run across the roof, jump the gap, land and look back — make one prompt.",
+      "expected_output": "Identifies motion-budget overload and splits into separate clips cut on action (informing the editor) rather than cramming.",
+      "files": [],
+      "expectations": [
+        "The response identifies more than one primary action",
+        "A split into multiple clips is proposed",
+        "The film-editor or director is informed of the split"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Prompt says 'no camera movement' but the camera keeps moving in Runway.",
+      "expected_output": "Rewrites with positive phrasing ('the camera remains still'), and offers the next retry rung.",
+      "files": [],
+      "expectations": [
+        "The rewrite uses positive phrasing instead of 'no ...'",
+        "A retry ladder or next step is given",
+        "Only one variable is changed in the next attempt"
+      ]
+    }
+  ]
+}

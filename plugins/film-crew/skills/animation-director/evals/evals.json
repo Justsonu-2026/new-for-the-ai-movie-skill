@@ -1,0 +1,39 @@
+{
+  "skill_name": "animation-director",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Animate this shot: the robot hears a noise, freezes, then hides behind a barrel. 3 seconds, 2D, 24 fps.",
+      "expected_output": "Key poses with frame numbers, timing chart summing to 72 frames, anticipation, follow-through, start and end poses as frame text.",
+      "files": [],
+      "expectations": [
+        "Key poses are numbered with frame numbers",
+        "The timing adds up to 72 frames at 24 fps",
+        "Anticipation is placed before the hide move",
+        "A start pose and an end pose are written as standalone frame descriptions"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Make my character's dialogue scene feel more alive; right now she just stands and talks.",
+      "expected_output": "Adds visible thought process (eyes lead), a contrasting pose change per idea, listening reactions, lip-sync accents.",
+      "files": [],
+      "expectations": [
+        "The response shows a perceive-think-decide-act sequence with eyes leading",
+        "Pose changes are tied to beats or ideas in the dialogue",
+        "Lip-sync accents on stressed syllables are marked"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We want heavy squash and stretch on our realistic 3D human characters.",
+      "expected_output": "Explains the style conflict and identity risk in AI generation, proposes timing/posing and limited deformation.",
+      "files": [],
+      "expectations": [
+        "The response notes the conflict with a realistic style",
+        "Identity or volume risk in AI generation is mentioned",
+        "An alternative relying on timing and posing is proposed"
+      ]
+    }
+  ]
+}

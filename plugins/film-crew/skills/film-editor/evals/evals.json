@@ -1,0 +1,39 @@
+{
+  "skill_name": "film-editor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Do a paper edit of my shot list; the target runtime is 90 seconds.",
+      "expected_output": "Timeline table with running total, runtime vs target, ASL per scene, problems and change requests.",
+      "files": [],
+      "expectations": [
+        "A timeline with running totals is given",
+        "The total is compared to 90 seconds",
+        "Average shot length per scene is computed",
+        "Problems are raised as change requests with timing impact"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here are my generated takes for scene 1. Build the cut list and an EDL.",
+      "expected_output": "Take selection with usable in/out (avoiding clip ends), cutlist.csv, and running build_cut.py to produce the EDL.",
+      "files": [],
+      "expectations": [
+        "A take is selected per shot with usable in and out points",
+        "A cutlist.csv with the documented header is written",
+        "build_cut.py is run and its output (EDL and/or script) reported"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The film is 20 seconds too long. Cut it.",
+      "expected_output": "Follows the reduction order (redundant shots first), proposes CRs for dialogue/scene cuts instead of making them.",
+      "files": [],
+      "expectations": [
+        "Redundant shots are proposed for cutting first",
+        "Dialogue or scene cuts are raised as change requests, not done unilaterally",
+        "The new runtime is computed"
+      ]
+    }
+  ]
+}

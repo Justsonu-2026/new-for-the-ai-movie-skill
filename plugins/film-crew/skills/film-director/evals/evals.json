@@ -1,0 +1,41 @@
+{
+  "skill_name": "film-director",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Direct this scene: INT. KITCHEN - NIGHT. Mother and son argue about him leaving for the army; he leaves without saying goodbye.",
+      "expected_output": "A direction document with analysis, visual thesis, beats, blocking with axis, playable actions, and a shot list with durations and end states.",
+      "files": [],
+      "expectations": [
+        "A visual thesis is stated as a concrete photographable idea",
+        "Each beat has a playable action verb rather than an emotion to play",
+        "The shot list has IDs like SC01-SH010 with size, angle, movement, action with an end state, duration and purpose",
+        "The axis of action and camera side are stated",
+        "Each shot has at most one camera move"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Shot list this horror scene: a babysitter hears a noise upstairs and goes to check.",
+      "expected_output": "Applies the horror playbook: negative space, withholding, slow build, silence before the scare, low-key light mood.",
+      "files": [],
+      "expectations": [
+        "Negative space or withheld reveal is used deliberately in at least one shot",
+        "The pacing slows before a scare or reveal",
+        "A note for sound (silence or a cue) is included",
+        "Light mood is low-key with motivated sources"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Can you do the whole café conversation as one continuous 45-second take for our AI video?",
+      "expected_output": "Explains the AI-feasibility risk of long takes, proposes a split or extend plan, and keeps the scene's intent.",
+      "files": [],
+      "expectations": [
+        "The response identifies clip-length or drift risk for a 45-second take in current tools",
+        "An alternative (split into shots or an extend plan) is proposed",
+        "The scene's story facts are preserved"
+      ]
+    }
+  ]
+}

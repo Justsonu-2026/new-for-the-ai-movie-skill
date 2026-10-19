@@ -1,0 +1,39 @@
+{
+  "skill_name": "visual-style-designer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create the look for my 3-minute neo-noir short set in a rainy future Lagos.",
+      "expected_output": "A style bible with a style record, palette with hex roles, color script per scene, style lock 30-70 words, avoid list.",
+      "files": [],
+      "expectations": [
+        "A 'record: style' block with medium, aspect_ratio, palette, style_lock and avoid is present",
+        "The palette lists hex values with roles including a reserved character anchor",
+        "A color script table has one row per scene with the emotional beat",
+        "The style lock is 30-70 words and contains no living artist names"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Make it look like a Wes Anderson film.",
+      "expected_output": "Describes qualities (symmetry, pastel palette, flat frontal staging) instead of using the name as a shortcut, and keeps the name out of the style lock.",
+      "files": [],
+      "expectations": [
+        "The style lock does not contain the name 'Wes Anderson'",
+        "Concrete visual qualities are described instead",
+        "The response explains that names are not used as prompt shortcuts"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our generated shots from scene 1 and scene 4 look like two different films. What do we do?",
+      "expected_output": "Tightens the style lock, uses approved style frames as references, and runs the look-test checklist.",
+      "files": [],
+      "expectations": [
+        "The response proposes tightening or enforcing the style lock verbatim",
+        "Approved style frames are proposed as references for generation",
+        "Specific checklist items (palette anchors, contrast, texture) are named"
+      ]
+    }
+  ]
+}

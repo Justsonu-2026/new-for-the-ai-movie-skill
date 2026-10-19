@@ -1,0 +1,39 @@
+{
+  "skill_name": "vfx-supervisor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan the VFX for my film. Several shots have readable signs and one shot has two characters hugging.",
+      "expected_output": "VFX records with problem, method, elements, steps, estimate, fallback and review criteria; text via post compositing.",
+      "files": [],
+      "expectations": [
+        "Readable text shots use a post compositing method",
+        "Each VFX shot is a 'record: vfx' with method, elements and steps",
+        "Each record has a fallback and review criteria",
+        "The hugging shot gets a method or a restaging proposal"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The best take of the insert has a sixth finger. Can we save it?",
+      "expected_output": "Plans a cleanup/region-edit fix with criteria rather than a full regeneration.",
+      "files": [],
+      "expectations": [
+        "A cleanup, paint-out or region edit method is proposed",
+        "Review criteria for the fix are given",
+        "Full regeneration is not the first recommendation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add the Coca-Cola logo to the vending machine.",
+      "expected_output": "Flags trademark rights and proposes a generic design.",
+      "files": [],
+      "expectations": [
+        "The response flags trademark/rights issues",
+        "A generic alternative is proposed",
+        "The logo is not added to any prompt or VFX record"
+      ]
+    }
+  ]
+}
