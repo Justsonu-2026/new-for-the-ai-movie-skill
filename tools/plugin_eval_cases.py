@@ -17,7 +17,9 @@ import textwrap
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EVALS = os.path.join(ROOT, "plugins", "film-crew", "evals")
 FIXTURES = os.path.join(ROOT, "tests", "eval-fixtures")
-SCAFFOLD = 'set -eu\ncp -R "$(dirname "$0")/fixture/." .\n'
+# Seed the empty workspace: the shared base project, then this case's overlay (if any).
+SCAFFOLD = ('set -eu\nHERE="$(cd "$(dirname "$0")" && pwd)"\ncp -R "$HERE/../_fixtures/base/." .\n'
+            'if [ -d "$HERE/fixture" ]; then cp -R "$HERE/fixture/." .; fi\n')
 
 CASES = [
     dict(name="story-writer-ideas", skill="story-writer", turns=15, prompt="""
@@ -211,6 +213,11 @@ FAIL otherwise."""),
 ]
 
 
+def sq(text):
+    """Single-quoted YAML scalar (an apostrophe is written as two)."""
+    return "'" + str(text).replace("'", "''") + "'"
+
+
 def front(d):
     return "---\n" + "".join(f"{k}: {v}\n" for k, v in d.items()) + "---\n"
 
@@ -221,6 +228,7 @@ def main():
             if entry != "results":
                 shutil.rmtree(os.path.join(EVALS, entry)) if os.path.isdir(os.path.join(EVALS, entry)) else None
     os.makedirs(EVALS, exist_ok=True)
+    shutil.copytree(os.path.join(FIXTURES, "base"), os.path.join(EVALS, "_fixtures", "base"))
     for c in CASES:
         d = os.path.join(EVALS, c["name"])
         g = os.path.join(d, "graders")
@@ -236,10 +244,8 @@ def main():
             with open(os.path.join(d, "scaffold.sh"), "w") as fh:
                 fh.write(SCAFFOLD)
             src = os.path.join(FIXTURES, c["name"])
-            if os.path.isdir(src):
+            if os.path.isdir(src):  # optional per-case overlay on top of the shared base project
                 shutil.copytree(src, os.path.join(d, "fixture"))
-            else:
-                print(f"WARNING: fixture missing for {c['name']} ({src})")
         if c["skill"]:
             with open(os.path.join(g, "skill-fired.md"), "w") as fh:
                 fh.write(front({"type": "tool_used", "tool": "Skill",
@@ -249,14 +255,15 @@ def main():
                 fh.write(front({"type": "tool_used", "tool": "Skill", "min": 0, "max": 0, "arm": "both"}))
         for name, pattern, target in c.get("regex", []):
             with open(os.path.join(g, f"{name}.md"), "w") as fh:
-                fh.write(front({"type": "regex", "pattern": f"'{pattern}'", "target": target}))
+                fh.write(front({"type": "regex", "pattern": sq(pattern), "target": target}))
         for name, path in c.get("files", []):
             with open(os.path.join(g, f"{name}.md"), "w") as fh:
-                fh.write(front({"type": "file_exists", "path": f"'{path}'"}))
+                fh.write(front({"type": "file_exists", "path": sq(path)}))
         if c.get("tool"):
             name, tool, match = c["tool"]
             with open(os.path.join(g, f"{name}.md"), "w") as fh:
-                fh.write(front({"type": "tool_used", "tool": tool, "input_match": f"'{match}'"}))
+                # the script only exists inside the plugin, so this is an indicator, not a fair baseline comparison
+                fh.write(front({"type": "tool_used", "tool": tool, "input_match": sq(match), "arm": "with-only"}))
         llm_fm = {"type": "llm"}
         if c.get("llm_target"):
             llm_fm["focus"] = "{ source: file, path: " + c["llm_target"] + " }"

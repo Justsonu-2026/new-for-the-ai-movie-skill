@@ -28,10 +28,19 @@ except ImportError:
 BLOCK_RE = re.compile(r"^```ya?ml[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 VERSION_RE = re.compile(r"_v(\d+)\.(?:png|jpe?g|webp)$", re.I)
 DEFAULT_ASPECT = "16:9"
-MOVE_GLYPHS = [("PUSH", "⇲ push in"), ("PULL", "⇱ pull out"), ("PAN L", "← pan L"), ("PAN R", "→ pan R"),
-               ("TILT U", "↑ tilt up"), ("TILT D", "↓ tilt down"), ("TRUCK L", "⇐ truck L"),
-               ("TRUCK R", "⇒ truck R"), ("CRANE UP", "⤒ crane up"), ("CRANE DOWN", "⤓ crane down"),
-               ("ARC", "↻ arc"), ("FOLLOW", "⇢ follow"), ("HANDHELD", "≈ handheld")]
+# Movement glyphs keyed by the production-schema movement vocabulary.
+MOVE_GLYPHS = {"dolly-in": "⇲ push in", "push-in": "⇲ push in", "zoom-in": "⇲ zoom in", "dolly-out": "⇱ pull out",
+               "pull-out": "⇱ pull out", "zoom-out": "⇱ zoom out", "pan-left": "← pan L", "pan-right": "→ pan R",
+               "tilt-up": "↑ tilt up", "tilt-down": "↓ tilt down", "truck-left": "⇐ truck L",
+               "truck-right": "⇒ truck R", "crane-up": "⤒ crane up", "crane-down": "⤓ crane down",
+               "pedestal-up": "⤒ pedestal up", "pedestal-down": "⤓ pedestal down", "arc-left": "↺ arc L",
+               "arc-right": "↻ arc R", "follow": "⇢ follow", "lead": "⇠ lead", "handheld": "≈ handheld",
+               "rack-focus": "◎ rack focus"}
+# Fallback when no shot record exists: storyboard notation words in camera_notes (whole words only).
+NOTE_GLYPHS = [(r"\bPUSH IN\b", "⇲ push in"), (r"\bPULL OUT\b", "⇱ pull out"), (r"\bPAN L(EFT)?\b", "← pan L"),
+               (r"\bPAN R(IGHT)?\b", "→ pan R"), (r"\bTILT UP\b", "↑ tilt up"), (r"\bTILT DOWN\b", "↓ tilt down"),
+               (r"\bTRUCK L(EFT)?\b", "⇐ truck L"), (r"\bTRUCK R(IGHT)?\b", "⇒ truck R"),
+               (r"\bCRANE UP\b", "⤒ crane up"), (r"\bCRANE DOWN\b", "⤓ crane down"), (r"\bFOLLOW\b", "⇢ follow")]
 
 
 def records(path, kind):
@@ -81,7 +90,15 @@ def best_image(root, panel):
     return None
 
 
-def placeholder_svg(panel, aspect):
+def move_glyph(panel, shot):
+    move = str((shot.get("camera") or {}).get("movement") or "").lower()
+    if move:
+        return " + ".join(MOVE_GLYPHS[m.strip()] for m in move.split("+") if m.strip() in MOVE_GLYPHS)
+    notes = str(panel.get("camera_notes", ""))
+    return next((g for rx, g in NOTE_GLYPHS if re.search(rx, notes)), "")
+
+
+def placeholder_svg(panel, aspect, glyph):
     w, h = 320, round(320 * ratio(aspect))
     words = html.escape(str(panel.get("composition") or panel.get("description") or "")).split()
     lines, cur = [], ""
@@ -94,9 +111,10 @@ def placeholder_svg(panel, aspect):
     if cur:
         lines.append(cur)
     max_lines = max(1, (h - 30) // 13)
-    text = "".join(f'<tspan x="8" dy="13">{l}</tspan>' for l in lines[:max_lines])
-    notes = str(panel.get("camera_notes", "")).upper()
-    glyph = next((g for key, g in MOVE_GLYPHS if key in notes), "")
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(" ,;.") + " …"
+    text = "".join(f'<tspan x="8" dy="13">{l}</tspan>' for l in lines)
     return (f'<svg viewBox="0 0 {w} {h}" class="ph" role="img" aria-label="placeholder panel">'
             f'<rect x="0.5" y="0.5" width="{w-1}" height="{h-1}" fill="#f4f4f2" stroke="#222"/>'
             f'<g stroke="#bbb" stroke-dasharray="3 3"><line x1="{w/3}" y1="0" x2="{w/3}" y2="{h}"/>'
@@ -158,7 +176,7 @@ h1{{font-size:20px}} h2{{font-size:16px;margin-top:28px;border-bottom:1px solid 
                 visual = f'<img src="{html.escape(img)}" alt="{html.escape(str(p.get("description", "")))}">'
             else:
                 missing_images += 1
-                visual = placeholder_svg(p, aspect)
+                visual = placeholder_svg(p, aspect, move_glyph(p, shot))
             meta = " · ".join(str(x) for x in (cam.get("shot_size"), cam.get("angle"), cam.get("movement"),
                                                f"{p.get('duration_s', '?')} s") if x)
             pid = str(p.get("id", "")).replace("SB-", "")

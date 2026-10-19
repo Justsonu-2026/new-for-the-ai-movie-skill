@@ -36,12 +36,18 @@ How the production-manager turns approved department documents into complete sho
 These three fields are the bridge to image and video models. They must stand alone: someone who reads only
 this text can draw the frame.
 
-**start_frame / end_frame** — one paragraph each, in this order:
+**start_frame / end_frame** — one paragraph each, **150-300 words** (the validator warns above 350), in
+this order:
 1. Camera: shot size, angle, lens, height, depth of field.
 2. Each character: identity lock **verbatim**, costume lock **verbatim** plus the current costume state,
    position in frame (thirds, foreground/mid/background, distance), facing, pose, expression.
 3. Props: lock verbatim + state + where they are.
 4. Location: location lock verbatim + the area + what is in foreground/midground/background.
+
+**Lock budget:** paste the full lock only for in-focus primary subjects. For anything small, soft-focus,
+partly visible or in the background, paste its `short_lock` instead (owned by the designer, also
+verbatim). In a close-up of a hand on a prop, the location may be one short lock; in an empty wide, the
+character locks are short. If a needed `short_lock` doesn't exist, request it — never write your own.
 5. Light: key direction and quality, fill, rim, practicals, shadows; time of day; weather.
 6. Palette anchors (3-5 named colors) and the style lock verbatim.
 
@@ -83,6 +89,7 @@ Compiled `motion`:
 > and holds. Camera static. Rain streaks run down the window glass. At 3.0 s she says quietly, "That's my street."
 
 ## 4. Common compilation errors
+- Frame text over 350 words because every lock is pasted in full regardless of what is in focus.
 - Paraphrasing a lock ("a young woman with dark hair") instead of pasting it verbatim.
 - Copying the director's emotional intent ("she is devastated") into frame text instead of the visible form.
 - Two primary actions in one shot ("she reads the label and runs downstairs") — return to the director.

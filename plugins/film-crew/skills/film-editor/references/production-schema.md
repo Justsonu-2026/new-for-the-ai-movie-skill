@@ -78,7 +78,10 @@ Required fields are listed; add any other useful fields.
 
 `identity_lock` / `style_lock` are short fixed paragraphs (character: 40-80 words; costume, location,
 prop: 25-60 words; style: 30-70 words) that are pasted **verbatim** into every image or video prompt that
-shows the thing. Paraphrasing a lock is the most common cause of identity drift.
+shows the thing. Paraphrasing a lock is the most common cause of identity drift. Characters, costumes,
+locations and props also carry a `short_lock` (10-25 words, owned by the same designer) used verbatim when
+the thing is small, soft-focus or secondary in a shot. Locks describe what is present ("bare neck",
+"blank walls"), never "no ...".
 
 ## 4. The shot record (full)
 
@@ -165,8 +168,10 @@ generation:
 
 Rules for the compiled shot record:
 - `start_frame` and `end_frame` are complete still descriptions a person could draw without the rest
-  of the document: who, wearing what, where in frame, doing what, lit how, from which camera. Include the
-  relevant identity locks verbatim.
+  of the document: who, wearing what, where in frame, doing what, lit how, from which camera. Paste the
+  full lock for each in-focus primary subject and the `short_lock` for background or soft-focus elements;
+  always paste the style lock. Target 150-300 words per frame text (the validator warns above 350): long
+  prompts dilute what matters and may exceed tool limits.
 - `motion` states one primary subject action and at most one camera move, with an end state.
 - Every ID referenced must exist as a record. Every value must trace to an owner document; otherwise use
   `MISSING:` and route the request to the owner.
@@ -226,4 +231,6 @@ overwrite an approved asset; write a new version.
 6. Scenes: the sum of shot durations is within ±25% of the scene's `est_duration_s` (warning).
 7. Continuity: within one scene, a character keeps one costume unless a shot declares `costume_change: true`.
 8. Staleness: every `depends_on` entry `name@N` matches the current `version` of that artifact (warning).
-9. Counts of `MISSING:`, `ASSUMPTION:`, `CONFLICT:` and `OPEN-QUESTION:` markers per file (report).
+9. Locks (warnings): word counts, character lock without the name or garments, style lock without an aspect
+   ratio, no "no ..." phrasing; frame texts over 350 words.
+10. Counts of `MISSING:`, `ASSUMPTION:`, `CONFLICT:` and `OPEN-QUESTION:` markers per file (report).

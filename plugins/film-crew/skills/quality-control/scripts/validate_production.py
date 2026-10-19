@@ -91,6 +91,15 @@ MODES = {"text-to-image", "image-edit", "text-to-video", "image-to-video", "firs
 VIDEO_MODES = {"text-to-video", "image-to-video", "first-last-frame", "reference-to-video", "video-extend",
                "video-edit"}
 STATUSES = {"DRAFT", "REVIEW", "APPROVED", "LOCKED", "STALE", "SUPERSEDED"}
+# Word limits for lock texts (production-schema section 3). Outside the range is a warning, not an error.
+LOCK_WORDS = {"character": (40, 80), "costume": (25, 60), "location": (25, 60), "prop": (25, 60), "style": (30, 70)}
+GARMENT_WORDS = re.compile(r"\b(apron|shirt|trousers|pants|jacket|coat|raincoat|dress|skirt|hoodie|shoes|boots|"
+                           r"sneakers|hat|scarf|uniform|jeans|sweater|blouse|robe|cloak|sandals)\b", re.I)
+ASPECT_RE = re.compile(r"\b\d{1,2}(?:\.\d+)?:\d{1,2}\b")
+SHORT_LOCK_WORDS = (10, 25)
+NEGATION_RE = re.compile(r"\b(?:no|without)\s+[a-z]+", re.I)
+# Frame texts above this length dilute the prompt and may exceed tool limits (schema section 4).
+MAX_FRAME_WORDS = 350
 EMPTY_VALUES = {"", "tbd", "todo", "?", "none yet", "n/a?"}
 MARKERS = ["MISSING:", "ASSUMPTION:", "CONFLICT:", "OPEN-QUESTION:", "PROPOSAL:"]
 # Duration tolerance between a scene estimate and its shots (schema section 7, rule 6).
@@ -208,9 +217,40 @@ def check_records(records, rep):
                                f"(write 'MISSING: <what>' if unknown)")
         if rtype == "shot":
             check_shot(rec, rep)
+        check_lock(rec, rep)
         if "status" in rec and rec["status"] not in STATUSES:
             rep.err(where, f"{rid}: unknown status '{rec['status']}'")
     return by_id
+
+
+def check_lock(rec, rep):
+    rtype, rid, where = rec.get("record"), rec["id"], rec["_where"]
+    field = "style_lock" if rtype == "style" else "identity_lock"
+    lock = rec.get(field)
+    if rtype not in LOCK_WORDS or not isinstance(lock, str) or is_empty(lock):
+        return
+    n = len(lock.split())
+    lo, hi = LOCK_WORDS[rtype]
+    if not lo <= n <= hi:
+        rep.warn(where, f"{rid}: {field} has {n} words (expected {lo}-{hi})")
+    if rtype == "character":
+        name = str(rec.get("name") or "").split()
+        if name and re.search(r"\b" + re.escape(name[0]) + r"\b", lock):
+            rep.warn(where, f"{rid}: identity_lock contains the name '{name[0]}' (models don't know names)")
+        garments = sorted(set(m.lower() for m in GARMENT_WORDS.findall(lock)))
+        if garments:
+            rep.warn(where, f"{rid}: identity_lock mentions garments {garments}; move them to the costume lock")
+    if rtype == "style" and ASPECT_RE.search(lock):
+        rep.warn(where, f"{rid}: style_lock contains an aspect ratio; set it as a generation parameter instead")
+    neg = NEGATION_RE.findall(lock)
+    if neg and rtype != "style":
+        rep.warn(where, f"{rid}: {field} uses negative phrasing {neg[:3]}; describe what is present instead")
+    if rtype in ("character", "costume", "location", "prop"):
+        short = rec.get("short_lock")
+        if not isinstance(short, str) or is_empty(short):
+            rep.warn(where, f"{rid}: no short_lock (10-25 words) for small or soft-focus appearances")
+        elif not SHORT_LOCK_WORDS[0] <= len(short.split()) <= SHORT_LOCK_WORDS[1]:
+            rep.warn(where, f"{rid}: short_lock has {len(short.split())} words (expected 10-25)")
 
 
 def check_shot(rec, rep):
@@ -244,6 +284,11 @@ def check_shot(rec, rep):
         if len(parts) > 2:
             rep.warn(where, f"shot {rid}: {len(parts)} combined camera moves; at most two are allowed")
     gen = rec.get("generation") or {}
+    for f in ("start_frame", "end_frame"):
+        n = len(str(gen.get(f) or "").split())
+        if n > MAX_FRAME_WORDS:
+            rep.warn(where, f"shot {rid}: generation.{f} has {n} words (aim for 150-300; use short locks for "
+                            f"background elements)")
     mode = str(gen.get("mode", ""))
     if mode and mode not in MODES and not mode.startswith("MISSING"):
         rep.err(where, f"shot {rid}: generation.mode '{mode}' unknown (use {sorted(MODES)})")

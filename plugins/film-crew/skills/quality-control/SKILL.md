@@ -26,6 +26,7 @@ verdict carries evidence. You do not fix things; you route fixes to the owner.
 
 ```
 QC progress:
+- [ ] 0 Independence stated
 - [ ] 1 Identify stage, targets and the specs for each
 - [ ] 2 Technical checks (scripts)
 - [ ] 3 Content checks against the rubric for the stage
@@ -33,6 +34,10 @@ QC progress:
 - [ ] 5 Verdicts with evidence; route fixes
 - [ ] 6 Report + handoff
 ```
+
+**0 Independence.** Record in the report whether you produced or edited any of the material in this
+session. If you did, label the report "not independent" and recommend a re-check in a fresh session or
+subagent; never let a self-review count as a gate PASS without saying so.
 
 **1 Scope.** List each target with the exact spec version it must match. If a spec is missing or not
 APPROVED, the verdict for that item is NOT-VERIFIABLE, not PASS.

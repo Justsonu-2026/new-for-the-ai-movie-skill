@@ -17,7 +17,7 @@ claude -p "$PROMPT" \
   --max-budget-usd "$BUDGET" \
   --no-session-persistence \
   --permission-mode acceptEdits \
-  --allowedTools "Read,Write,Edit,Glob,Grep,Bash,Skill" \
+  --allowedTools "Read,Write,Edit,Glob,Grep,Bash,Skill,Agent" \
   --output-format stream-json --verbose > "$LOGDIR/$NAME.jsonl" 2> "$LOGDIR/$NAME.err" || true
 python3 - "$LOGDIR/$NAME.jsonl" <<'EOF'
 import json, sys

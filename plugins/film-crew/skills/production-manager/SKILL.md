@@ -77,6 +77,11 @@ Run stages in the order above; stages in the same row may run in parallel. For e
 4. Present the gate to the user (gated mode) with a short summary and the decisions they need to make.
    Record approvals in the log with date and version.
 
+Quality control must be independent: run **quality-control** in a fresh context that did not write
+the material — in Claude Code, delegate it to a subagent (Agent tool) with only the project path and the
+stage to check; elsewhere, ask the user to run it in a new session. If neither is possible, run it
+yourself and label the report "not independent".
+
 Specialist routing: send a scene to **action-director** when it contains a fight, chase, stunt or other
 physical set piece, and to **animation-director** when the medium is animation (2D, 3D, stop-motion,
 anime) — both work inside the film-director's plan, not instead of it. Order matters: the director's
@@ -98,7 +103,8 @@ Follow [references/compiling-shot-records.md](references/compiling-shot-records.
 2. Pull each field from its owner: camera and light (cinematographer), states and screen direction
    (script-supervisor), identity locks (character/world bibles), palette and style lock (style bible),
    dialogue lines (screenplay), choreography or pose keys (specialists).
-3. Write `start_frame`, `end_frame` and `motion` as self-contained text with locks pasted verbatim.
+3. Write `start_frame`, `end_frame` and `motion` as self-contained text with locks pasted verbatim —
+   full locks for in-focus primary subjects, short locks for the rest, 150-300 words per frame.
 4. Any field without an owner source becomes `MISSING: <what, from whom>` and goes on the request list.
    Never fill a creative gap yourself. The one exception: purely mechanical values (e.g. `transition_in`
    equals the previous shot's `transition_out`) may be derived; mark them `derived`.
