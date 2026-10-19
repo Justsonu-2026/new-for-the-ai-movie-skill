@@ -50,8 +50,11 @@ continuity escapes. Raise change requests (`CR-NNN`) to the director with timing
 propose cuts in order of least story damage.
 
 **3 Take selection.** For each shot, review generated takes (with QC verdicts): pick the take with the best
-performance and continuity, then the usable range — avoid the first/last frames where generations often
-settle or morph. Record file and source in/out (seconds or timecode).
+performance and continuity, then the usable range. Generated clips usually settle at the start and drift
+or morph at the end, which is why they are generated with handles: **never cut from 0.0**. Use the `trim`
+range in the video prompt record when there is one; otherwise default to an in-point of 0.5 s (or the
+first frame where the action starts) and an out-point = in + planned duration, staying at least 0.3 s
+before the end of the take. Record file and source in/out (seconds or timecode).
 
 **4 Cut list.** Write `13_edit/cutlist.csv` (header in the template): event, shot, file, src_in, src_out,
 transition, notes. The record timeline is computed from durations.
@@ -84,7 +87,8 @@ grade (style bible intent) → sound mix (sound-designer) → titles/subtitles �
 ## Quality checks
 - Paper edit total within ±10% of the target runtime, or CRs raised.
 - Every cut has a stated reason in the cut list notes for non-straight transitions.
-- Every shot in the cut has a selected take with usable in/out; no frames from failed QC ranges.
+- Every shot in the cut has a selected take with usable in/out; no in-point at 0.0 unless the take was
+  generated without a head handle (say so); no frames from failed QC ranges.
 - Dialogue never clipped mid-word; music edits on beats/phrases.
 - EDL and script build without errors; event count equals shot count in the cut list.
 

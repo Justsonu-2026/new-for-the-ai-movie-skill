@@ -1,5 +1,6 @@
 ---
 type: regex
-pattern: '(?i)\b\d{2,3}\s?BPM\b'
+pattern: '\b\d{2,3}\s?bpm\b'
 target: last_message
+flags: i
 ---

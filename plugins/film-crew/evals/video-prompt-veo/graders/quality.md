@@ -2,9 +2,11 @@
 type: llm
 ---
 
-PASS if the prompt describes the motion and change rather than re-describing the whole image,
-keeps one primary action with an explicit end state, keeps the camera still using positive phrasing, puts
-the line in quotes with a speaker, includes sound effects or ambience cues, states no music, and picks a
-clip length of 4, 6 or 8 seconds that is at least 4 s.
-FAIL if it adds camera moves or actions, uses "no camera movement" style negative phrasing as the only
-camera instruction, or omits the dialogue.
+Judge only these five points. PASS if all hold:
+1. The prompt describes what moves or changes (the parcel turn, the thumb wipe, the look up) rather than
+   re-describing the whole picture.
+2. It adds no action, character or camera move beyond the ones in the request.
+3. The camera instruction is phrased positively (for example "locked off", "remains still").
+4. The line "That's my street." appears in quotes with a speaker or attribution.
+5. A clip length of 4, 6 or 8 seconds is chosen.
+FAIL if any of the five points is not met.

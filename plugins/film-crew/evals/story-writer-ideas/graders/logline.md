@@ -1,5 +1,6 @@
 ---
 type: regex
-pattern: '(?i)logline'
+pattern: 'logline'
 target: last_message
+flags: i
 ---

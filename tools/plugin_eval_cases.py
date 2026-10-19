@@ -25,7 +25,7 @@ CASES = [
     dict(name="story-writer-ideas", skill="story-writer", turns=15, prompt="""
 I want to make a 90-second animated short about a kid and a broken kite. Give me a few different story
 ideas, pick the strongest, and develop it into a full beat outline. Put everything in your reply.""",
-         regex=[("logline", r"(?i)logline", "last_message")],
+         regex=[("logline", r"logline", "last_message", "i")],
          llm="""PASS if the reply gives at least three concepts that differ in protagonist, conflict or genre (not
 only setting), recommends one, and develops it into beats where each beat causes the next and the ending
 is resolved by the protagonist's own choice; the beat timings add up to roughly 90 seconds.
@@ -48,7 +48,7 @@ FAIL if interior states are stated in action lines, the exposition line is kept,
 I need a character design I can use to keep a character consistent across AI images: Ana, a 30-year-old
 lighthouse keeper in 1950s Portugal who wears a work coat. Give me the full character sheet spec in
 your reply, including the text I should paste into every prompt.""",
-         regex=[("height", r"(?i)\b1[4-9]\d\s?cm\b", "last_message"), ("hex", r"#[0-9A-Fa-f]{6}", "last_message")],
+         regex=[("height", r"\b1[4-9]\d\s?cm\b|height_cm:\s*1[4-9]\d", "last_message"), ("hex", r"#[0-9A-Fa-f]{6}", "last_message")],
          llm="""PASS if the reply gives height in cm, face, hair, eyes, skin, silhouette and distinguishing
 features; a fixed paste-in description for the person that contains no clothing and does not depend on
 her name, plus a separate fixed description for the costume; colors with hex values; and turnaround views
@@ -143,12 +143,14 @@ Shot SC03-SH020, 4 s in the cut, MCU high angle, static camera, focus racks from
 2.5 s. Action: she turns the parcel over, wipes the label with her thumb, looks up at the window and holds.
 At 3.0 s she says quietly "That's my street." Rain on the window behind her. No music.""",
          regex=[("quoted-line", r"\"That's my street\.\"", "last_message")],
-         llm="""PASS if the prompt describes the motion and change rather than re-describing the whole image,
-keeps one primary action with an explicit end state, keeps the camera still using positive phrasing, puts
-the line in quotes with a speaker, includes sound effects or ambience cues, states no music, and picks a
-clip length of 4, 6 or 8 seconds that is at least 4 s.
-FAIL if it adds camera moves or actions, uses "no camera movement" style negative phrasing as the only
-camera instruction, or omits the dialogue."""),
+         llm="""Judge only these five points. PASS if all hold:
+1. The prompt describes what moves or changes (the parcel turn, the thumb wipe, the look up) rather than
+   re-describing the whole picture.
+2. It adds no action, character or camera move beyond the ones in the request.
+3. The camera instruction is phrased positively (for example "locked off", "remains still").
+4. The line "That's my street." appears in quotes with a speaker or attribution.
+5. A clip length of 4, 6 or 8 seconds is chosen.
+FAIL if any of the five points is not met."""),
     dict(name="voice-director-casting", skill="voice-director", turns=15, prompt="""
 Cast voices and give delivery notes for these lines in my AI short.
 LAN (30s, tired noodle vendor): "Almost closing." / "Hey!" / "Ah Ma." (the last one barely audible, she
@@ -161,7 +163,7 @@ FAIL if delivery is only an emotion word, or a real person's voice is used as th
 Plan the music for my 90-second short. Scenes: 1 busy night market stall (22 s), 2 chase through the
 market (32 s), 3 quiet alley where she realises her grandmother fed the monkey (26 s), 4 closing time,
 she repeats the ritual (10 s). Where should music go and what should it be? Reply in the message.""",
-         regex=[("bpm", r"(?i)\b\d{2,3}\s?BPM\b", "last_message")],
+         regex=[("bpm", r"\b\d{2,3}\s?bpm\b", "last_message", "i")],
          llm="""PASS if every scene is decided as music, no music or source music with a reason; cues have a
 function, start and end, tempo, key or mode and instrumentation; at least one deliberate silence or
 restraint is justified (for example at the realisation); and no artist names are used for the style.
@@ -253,9 +255,12 @@ def main():
         else:
             with open(os.path.join(g, "no-skill.md"), "w") as fh:
                 fh.write(front({"type": "tool_used", "tool": "Skill", "min": 0, "max": 0, "arm": "both"}))
-        for name, pattern, target in c.get("regex", []):
+        for name, pattern, target, *flags in c.get("regex", []):  # JS regex: case-insensitivity via flags, not (?i)
+            fm = {"type": "regex", "pattern": sq(pattern), "target": target}
+            if flags:
+                fm["flags"] = flags[0]
             with open(os.path.join(g, f"{name}.md"), "w") as fh:
-                fh.write(front({"type": "regex", "pattern": sq(pattern), "target": target}))
+                fh.write(front(fm))
         for name, path in c.get("files", []):
             with open(os.path.join(g, f"{name}.md"), "w") as fh:
                 fh.write(front({"type": "file_exists", "path": sq(path)}))

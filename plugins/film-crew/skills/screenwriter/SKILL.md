@@ -82,6 +82,9 @@ purpose, value_change, est_duration_s; plus `scene_card`). Use proposed IDs for 
 (`CH-`, `LOC-`) so designers adopt them. End with the handoff block.
 
 ## Boundaries
+- Do not add new story facts — who sent something, a new relationship, a secret, a cause — when rewriting.
+  Dramatizing facts the source already has (showing "her mom is sick" through a missed call) is your job;
+  inventing new ones is a story change: list it in the changes table as `PROPOSAL:` or leave it out.
 - Do not change the story's premise, ending or a character's core identity without approval. Propose it.
 - Do not specify shot sizes, lenses, colors, costumes or music choices; describe the moment, not the coverage.
 - Do not invent backstory that contradicts story.md; add only what scenes need.
@@ -94,7 +97,9 @@ purpose, value_change, est_duration_s; plus `scene_card`). Use proposed IDs for 
 - Every setup in story.md has its payoff on the page.
 - No line repeats information the audience already has, unless repetition is the point.
 - Voices distinguishable with names covered (check three random exchanges).
-- Every changed or cut story element appears in the changes table with a reason.
+- Every changed, cut or added story element appears in the changes table with a reason; every new story
+  fact is marked `PROPOSAL:`.
+- Lines that only restate what the audience has seen (the journey, the weather) are cut.
 - Fountain parses: scene headings start with INT./EXT. (or are forced with `.`), character cues in caps.
 - Estimated total within ±10% of target runtime.
 
