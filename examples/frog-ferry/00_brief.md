@@ -1,7 +1,7 @@
 ---
 artifact: brief
 id: brief
-version: 1
+version: 2
 status: APPROVED
 owner: production-manager
 depends_on: []
@@ -24,7 +24,7 @@ updated: 2026-10-19
 | Genre and tone | slapstick comedy, warm, gentle | user (comedy, kids) + ASSUMPTION on tone |
 | Dialogue language(s) | none (pantomime, vocal squeaks/sound only); English if any | ASSUMPTION |
 | Image tool(s) | Midjourney V7 | user |
-| Video tool(s) | Kling, version and features UNCONFIRMED | user |
+| Video tool(s) | Kling 2.1: image-to-video, first-last-frame (start + end frame), clip length 5 s or 10 s, up to 3 reference images. Native audio, native fps and resolution not stated (not relied on) | user (2026-10-19, brief@2) |
 | Audio tool(s) | not specified | ASSUMPTION: decided at stage 10 |
 | Budget or credit limit | none: no paid generation | user |
 | Deadline | none given | ASSUMPTION |
@@ -40,5 +40,5 @@ Real people, brands, copyrighted characters. Nothing scary for ages 3-7.
 None.
 
 ## Open questions
-- OPEN-QUESTION: Which Kling version and which modes does the user's plan support (image-to-video, first-last-frame, multi-reference, native audio, max clip length)? Plans must work with plain image-to-video until confirmed.
+- RESOLVED (brief@2): Kling 2.1 supports image-to-video and first-last-frame, 5 s or 10 s clips, up to 3 reference images. Still unstated: native audio, output fps/resolution, tier/credits (not relied on).
 - OPEN-QUESTION: Confirm no-dialogue approach (ASSUMPTION).

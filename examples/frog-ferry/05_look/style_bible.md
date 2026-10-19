@@ -4,7 +4,7 @@ id: style_bible
 version: 1
 status: APPROVED
 owner: visual-style-designer
-depends_on: [brief@1, screenplay@1]
+depends_on: [brief@2, screenplay@1]
 updated: 2026-10-19
 ---
 # Style Bible: Frog Ferry

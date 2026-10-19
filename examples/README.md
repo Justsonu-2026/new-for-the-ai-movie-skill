@@ -8,14 +8,15 @@ generated (no budget was authorized), so `assets/` is empty.
 | Example | Medium | Runtime | What it shows | Skill version |
 |---|---|---|---|---|
 | [the-two-knocks/](the-two-knocks/) | photoreal live action | 96 s planned | Gated run, stage by stage: concepts → story → screenplay → bibles → direction (+ action-director chase) → camera → continuity → 38 shot records → master document → 55-panel storyboard → paper edit → voice, music, SFX, VFX plans → image and video prompts → QC preflight | first version (before the fixes listed in docs/TEST-RESULTS.md) |
-| [frog-ferry/](frog-ferry/) | 2D cel animation | 40 s | One autonomous run from idea to storyboard, with animation-director and an independent QC subagent | after round-1 fixes |
+| [frog-ferry/](frog-ferry/) | 2D cel animation | 40 s target, 49.5 s planned | One autonomous run from idea to storyboard (animation-director, independent QC subagent), then two follow-up sessions: overloaded shots split by the director (17 → 25 shots) and recompiled with clip-time motion, then missing locks restored after the validator flagged them. 25 shot records, 52-panel storyboard, two QC reports | after all fixes |
 
-Note on the-two-knocks: it was produced before several fixes, so the validator (current version) now
-reports warnings on it that were the reason for those fixes — character locks containing names and
-garments, negative phrasing, missing short locks, and frame texts of 350-830 words. frog-ferry shows the
-corrected locks and 215-330-word frame texts; its own warnings (motion timed to the cut instead of the
-clip, shots with 5 action beats) are the round-2 findings that led to the next fixes. Both pass the
-validator with 0 errors.
+Note on the-two-knocks: it was produced by the first version of the skills, so the current validator
+reports warnings on it that motivated later fixes — character locks containing names and garments,
+negative phrasing, missing short locks, and frame texts of 350-830 words. frog-ferry shows the corrected
+output: short locks, 209-298-word frame texts, motion timed over the whole clip with keep ranges, and every
+shot subject's lock present in its frames. Its 3 remaining warnings are open items it reported itself (SC04
+runs 11.5 s against a 9 s estimate; two QC reports are stale against the newest master version). Both pass
+the validator with 0 errors.
 
 Where to look first:
 - `08_master/MASTER_PRODUCTION_DOCUMENT.md` — the assembled master document

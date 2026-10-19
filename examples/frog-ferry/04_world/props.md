@@ -1,7 +1,7 @@
 ---
 artifact: props
 id: props
-version: 1
+version: 2
 status: APPROVED
 owner: production-designer
 depends_on: [screenplay@1, style_bible@1]
@@ -9,11 +9,14 @@ updated: 2026-10-19
 ---
 # Prop Registry
 
+## Change note (v2, 2026-10-19)
+- PR-OAR: scenes SC01-SC05 (visible, STOWED, in SC04-SC05); HELD = Pip's right hand, or resting across her lap / on the boat floor within reach when the hand is needed (floats on the surface during the two sinkings); STOWED from SC04-SH030 (laid on the boat floor on screen in the first frames of the shot). Closes CR-ISSUE-09. No identity_lock or short_lock text changed.
+
 | ID | Name | Owner | Scenes | Hero? | States |
 |---|---|---|---|---|---|
 | PR-BOAT | Paper boat | CH-PIP | SC01-SC05 | yes | NEW, FLAT, REFOLDED, CREASED |
 | PR-SEED | Dandelion seed | CH-PIP | SC01-SC05 | yes | CLOSED, OPEN, PLANTED |
-| PR-OAR | Folded paper oar | CH-PIP | SC01-SC03 | no | HELD, STOWED |
+| PR-OAR | Folded paper oar | CH-PIP | SC01-SC05 | no | HELD, STOWED |
 | PR-SPROUT | Green sprout | CH-MO | SC05 | no | HIDDEN, SPROUT |
 
 ```yaml
@@ -66,10 +69,10 @@ size: "3 x 0.5 cm"
 materials: ["yellow origami paper"]
 colors: ["#FFC93C yellow", "#E0A81F shade"]
 owner: CH-PIP
-scenes: [SC01, SC02, SC03]
+scenes: [SC01, SC02, SC03, SC04, SC05]
 states:
-  - {id: PR-OAR:HELD, description: "in Pip's hand", from: SC01, cause: "start"}
-  - {id: PR-OAR:STOWED, description: "lying across the boat floor", from: SC04, cause: "Pip needs both hands for the seed"}
+  - {id: PR-OAR:HELD, description: "in Pip's right hand, or resting across her lap / on the boat floor within reach when the hand is needed; floats on the surface while the boat is sunk", from: SC01, cause: "start"}
+  - {id: PR-OAR:STOWED, description: "lying across the boat floor, not in her keeping (laid there on screen by her right hand at the start of SC04-SH030)", from: SC04-SH030, cause: "Pip needs both hands for the seed"}
 identity_lock: >-
   A small oar folded from a strip of bright yellow paper with a thin straight handle and a flat rectangular blade, crisp crease line down the middle, flat cel color with a thin dark-teal outline.
 short_lock: "small bright yellow folded paper oar with a thin handle and a flat blade"
@@ -100,7 +103,7 @@ reference_images: []
 - PR-SEED: front view closed and open.
 
 ## Handoff
-- Produced: LOC-PUDDLE@1, props@1 (REVIEW)
+- Produced: LOC-PUDDLE@1, props@2 (APPROVED; v2 = PR-OAR scenes/state wording only)
 - For script-supervisor: PR-BOAT NEW, FLAT, REFOLDED, CREASED; PR-SEED CLOSED, OPEN, PLANTED; PR-OAR HELD, STOWED; PR-SPROUT HIDDEN, SPROUT
-- ASSUMPTION: oar is stowed in SC04 (Pip needs both hands for the seed); boat color cream to stay distinct from Pip's yellow
+- ASSUMPTION: oar is stowed from SC04-SH030, on screen (Pip needs both hands for the seed); boat color cream to stay distinct from Pip's yellow
 - Next: film-director

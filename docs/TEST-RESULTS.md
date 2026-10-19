@@ -5,8 +5,9 @@ All tests ran on 2026-10-19 in a cloud container with Claude Code 2.1.303. Agent
 (later rounds). Costs are the list-price estimates Claude Code reported.
 
 **What was not tested:** no image, video or audio was generated — no generation budget was authorized —
-so prompt effectiveness on real image/video/audio models is unverified. Models other than Sonnet were not
-used as the agent (the authoring guidance recommends also testing Haiku and Opus; see "Remaining gaps").
+so prompt effectiveness on real image/video/audio models is unverified. Haiku was tested as the agent only
+in a 3-case spot check and Opus not at all (the authoring guidance recommends testing every target model;
+see "Remaining gaps").
 
 ## Contents
 1. Summary
@@ -32,8 +33,9 @@ used as the agent (the authoring guidance recommends also testing Haiku and Opus
 | Skill triggering (eval suite, prompts never name the skill) | 20/20 correct skill fired; 0 skills fired on an unrelated request (2 suite runs) |
 | Eval suite, with plugin | round 1: 0.80 score, 13/21 cases · round 2: **0.89, 17/21** |
 | Eval suite, mean improvement over no plugin (Δ) | round 1: +0.29 · round 2: **+0.45** |
-| Issues found by testing and fixed | 18 (section 6) |
-| Total test spend | ≈ $35 (productions ≈ $16, evals ≈ $15, other ≈ $4) |
+| Issues found by testing and fixed | 19 (section 6) |
+| Haiku as the agent (3-case spot check) | production-manager 1.00, character-designer 1.00, film-director 0.67 |
+| Total test spend | ≈ $45 (productions and retests ≈ $22, eval suites ≈ $19, other ≈ $4) |
 
 ## 2. Structural checks
 `tools/validate_skills.py` enforces the official authoring rules (frontmatter limits, portable keys only,
@@ -70,6 +72,13 @@ a user. Outputs are in `examples/`.
 | Skills invoked | Turns | Cost | Time | Result |
 |---|---|---|---|---|
 | story-writer, screenwriter, style, character, production designers, film-director, animation-director, cinematographer, script-supervisor, storyboard-artist, quality-control (via an independent subagent) | 71 | $3.70 | 821 s | 17 shot records, 31-panel storyboard, validator 0 errors; QC by a fresh subagent: 3 blockers, 13 fixes |
+
+Follow-up sessions on a copy of production 2 (to verify the round-2 fixes):
+
+| Session | Turns | Cost | Result |
+|---|---|---|---|
+| Act on QC: split overloaded shots, recompile, independent QC rerun | — | $5.87 | 17 → 25 shots; clip-time motion with keep ranges; 9 first-last-frame shots; QC rerun cleared the 3 blockers and raised new owner-routed items |
+| Clear validator lock warnings | 11 | $0.28 | missing-lock warnings 50 → 0; frames all < 350 words |
 
 Verification of round-1 fixes in production 2 (measured on the files):
 
@@ -146,9 +155,10 @@ Reading the numbers honestly:
 | I-08 | production 1 | QC run by the same agent that wrote the material | manager delegates QC to a fresh subagent; QC states independence | production 2: independent subagent |
 | I-09 | eval round 1 | film-editor cut every generated take from 0.0 (no head trim) | default trims, never cut from 0.0 | eval round 2: case passes |
 | I-10 | eval round 1 | screenwriter invented a plot fact in a rewrite without flagging it | boundary + quality check on new story facts | partially (see § in section 5) |
-| I-11 | production 2 (QC) | motion timed to the cut (1.5-3.5 s) while clips are 5 s | motion in clip time with a `keep` range; validator warning | retest below |
-| I-12 | production 2 (QC) | shots with 4-5 action beats per clip | validator warning on > 4 beats; compile rule | retest below |
-| I-13 | production 2 (QC) | all shots image-to-video when end states carried the story | first-last-frame default for story end states, marked to-verify | retest below |
+| I-11 | production 2 (QC) | motion timed to the cut (1.5-3.5 s) while clips are 5 s | motion in clip time with a `keep` range; validator warning | retest: 25/25 motions cover the full 5 s clip, all with keep ranges |
+| I-12 | production 2 (QC) | shots with 4-5 action beats per clip | validator warning on > 4 beats; compile rule | retest: director split shots (17 → 25); 0 shots over 4 beats |
+| I-13 | production 2 (QC) | all shots image-to-video when end states carried the story | first-last-frame default for story end states, marked to-verify | retest: 9 first-last-frame, 16 image-to-video |
+| I-16 | retest validator run | shortening frame texts dropped costume/prop locks instead of swapping in short locks (a regression from the I-07 fix: 50 missing locks in 25 shots) | validator checks every shot subject's lock is in its frame texts; manager must clear these before handoff | second retest: 50 → 0 missing locks, all frames < 350 words |
 | I-14 | eval round 2 | video prompt kept 0.0-4.0 s (no head hold), contradicting the editor's rule | hold before action; keep never starts at 0.0 | refined reruns: 2/2 pass |
 | I-15 | eval round 2 | screenwriter added readable phone-screen text without a VFX flag | flag every added on-screen text | refined reruns: flags present 2/2 |
 | B-01 | storyboard sheet screenshot | "arc" glyph on a static shot (substring match on "arcs") | glyphs from controlled vocabulary, word-boundary fallback | re-rendered sheet |
@@ -161,9 +171,9 @@ Reading the numbers honestly:
 |---|---|
 | Every requested skill exists with SKILL.md, inputs, outputs, workflow, boundaries, quality checks, failure handling, references | met (lint enforces sections) |
 | Official format and loading verified | met (`claude plugin validate`, load test) |
-| ≥ 3 eval cases per skill | met (60 skill-creator cases + 21 plugin-eval cases) |
+| ≥ 3 eval cases per skill | defined: 60 skill-creator cases (3 per skill, in `skills/*/evals/evals.json`); **executed**: the 21-case plugin suite (1 case per skill + 1 negative). The 60 skill-creator cases were not run in this session |
 | Sample film taken through the pipeline in the real platform; handoffs work through files | met (two productions, fresh session per stage in production 1) |
-| Issues found → fixed → re-tested | met for I-03, I-04, I-06, I-07, I-08, I-09, I-14, I-15, B-01-B-03; I-11-I-13 see retest |
+| Issues found → fixed → re-tested | met for I-03, I-04, I-06, I-07, I-08, I-09, I-11-I-16, B-01-B-03; I-01, I-05 fixed but not re-measured; I-10 partially |
 | Skills trigger correctly and not on unrelated requests | met (20/20, 0 false triggers) |
 | Plugin measurably improves results over no plugin | met (mean Δ +0.45 in round 2) |
 | Image/video/audio generation quality | **not tested** (no budget) |
@@ -171,7 +181,11 @@ Reading the numbers honestly:
 ## 8. Remaining gaps
 - No real generations: whether the prompts produce consistent characters and correct motion on Veo, Sora,
   Kling, Seedance, Runway, Midjourney or Gemini image models is unverified.
-- Only Sonnet was used as the agent model; Haiku and Opus behavior is untested.
+- Agent model coverage: Sonnet throughout; Haiku only in a 3-case spot check (2 pass, film-director 0.67);
+  Opus untested.
+- In the lock-fix retest the manager changed shot content without bumping record versions (the protocol
+  requires a bump); it flagged the choice to the user instead. Version discipline on mechanical fixes is
+  not yet reliable.
 - Eval rounds used one run per arm (refined reruns used two); scores carry run-to-run variance.
 - The screenwriter sometimes discloses a story reinterpretation without the `PROPOSAL:` marker (I-10).
 - Vendor-specific syntax for Kling, Seedance, Runway and Midjourney comes from third-party sources (see

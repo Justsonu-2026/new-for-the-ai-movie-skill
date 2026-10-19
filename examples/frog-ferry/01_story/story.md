@@ -4,7 +4,7 @@ id: story
 version: 1
 status: APPROVED
 owner: story-writer
-depends_on: [brief@1, concepts@1]
+depends_on: [brief@2, concepts@1]
 updated: 2026-10-19
 ---
 # Story: Frog Ferry

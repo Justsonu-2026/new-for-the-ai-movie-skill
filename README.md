@@ -63,9 +63,11 @@ Or ask any single department directly: "Design the main character and write a tu
 ## What is and isn't verified
 
 - Verified in this environment: skill structure against the official rules (`tools/validate_skills.py`,
-  `claude plugin validate`), all 20 skills loading in Claude Code, script behavior (unit tests), and a
-  sample film taken from idea to master document in real headless Claude Code sessions. See
-  [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md) for numbers, failures and fixes.
+  `claude plugin validate`), all 20 skills loading in Claude Code, script behavior (18 unit tests), two
+  sample films taken from idea to master document and storyboard in real headless Claude Code sessions,
+  correct skill triggering (20/20, no false triggers) and a with/without-plugin eval suite (score 0.89 with
+  the plugin, mean improvement +0.45). See [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md) for numbers,
+  failures and fixes.
 - Not verified: image, video or audio generation quality. No generation budget was authorized, so no
   prompts were run on real image or video models. Model-specific syntax for Kling, Seedance, Runway and
   Midjourney comes from third-party sources and is labeled as such.

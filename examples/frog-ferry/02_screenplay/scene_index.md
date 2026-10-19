@@ -4,7 +4,7 @@ id: screenplay
 version: 1
 status: LOCKED
 owner: screenwriter
-depends_on: [story@1, brief@1]
+depends_on: [story@1, brief@2]
 updated: 2026-10-19
 ---
 # Scene Index: Frog Ferry

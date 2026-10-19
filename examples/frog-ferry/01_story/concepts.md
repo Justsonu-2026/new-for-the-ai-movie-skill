@@ -4,7 +4,7 @@ id: concepts
 version: 1
 status: APPROVED
 owner: story-writer
-depends_on: [brief@1]
+depends_on: [brief@2]
 updated: 2026-10-19
 ---
 # Concepts: a tiny origami frog sails a paper boat across a puddle to bring a dandelion seed to a snail; a raindrop keeps sinking her boat
