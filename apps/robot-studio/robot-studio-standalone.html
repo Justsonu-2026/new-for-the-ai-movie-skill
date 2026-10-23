@@ -576,6 +576,11 @@ details.more[open] > * + * { margin-top: 10px; }
 @media (max-width: 1100px) { .nav-btn span { display: none; } }
 @media (max-width: 700px) { .topbar { flex-wrap: wrap; } .command-row .progress-pill { display: none; } .brand-text .project-title { max-width: 40vw; } }
 
+.lobby { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
+.lobby .card.newfilm { grid-row: span 2; }
+.lobby .card .row { flex-wrap: wrap; }
+@media (max-width: 900px) { .lobby { grid-template-columns: 1fr; } .lobby .card.newfilm { grid-row: auto; } }
+
 </style>
 
 <div id="app">

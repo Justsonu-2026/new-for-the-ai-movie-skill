@@ -142,10 +142,11 @@ async function routes(ctx) {
   await s.click('.choice:has-text("Story only")');
   await s.click('text=Start production!');
   await s.waitForFunction(() => /Story/.test(document.querySelector('#pipelineList') ? '' : '') || true);
-  await sleep(15000);
+  await s.waitForFunction(() => /Story[\s\S]*done/.test(document.body.innerText) && false, null, { timeout: 1 }).catch(() => {});
+  for (let k = 0; k < 24 && apiCalls < 3; k++) await sleep(5000);
   await s.click('.nav-btn[data-page=board]'); await sleep(300);
   await s.screenshot({ path: shot('18-standalone-board') });
-  console.log('STANDALONE API CALLS:', apiCalls, '| story status:', await s.evaluate(() => Array.from(document.querySelectorAll('.pl-row')).slice(0, 3).map((r) => r.innerText.split('\n').slice(1, 3).join(' ')).join(' || ')));
+  console.log('STANDALONE API CALLS:', apiCalls, '| story status:', await s.evaluate(() => Array.from(document.querySelectorAll('.pl-row .pl-main small')).slice(0, 3).map((r) => r.innerText).join(' || ')));
   console.log('ERRORS', JSON.stringify(errors, null, 1));
   await browser.close();
 })();
