@@ -1,0 +1,103 @@
+<title>Robo Film Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true">🎬</span>
+      <div class="brand-text">
+        <span class="brand-name">Robo Film Studio</span>
+        <button class="project-title" id="projectTitle" title="Rename project">No project yet</button>
+      </div>
+    </div>
+    <div class="progress-pill" id="progressPill" hidden>
+      <svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" class="ring-bg"/><circle cx="18" cy="18" r="15" class="ring-fg" id="ringFg"/></svg>
+      <div class="progress-text"><span id="progressStage">Ready</span><small id="progressCount">0 / 0</small></div>
+      <span class="onair" id="onAir">ON AIR</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="btnIssues" hidden title="Open questions and flags">❓ <span id="issueCount">0</span></button>
+      <button class="btn ghost" id="btnProjects" title="Your projects">🗂 <span class="hide-sm">Projects</span></button>
+      <button class="btn ghost" id="btnExport" title="Export" disabled>📦 <span class="hide-sm">Export</span></button>
+      <button class="btn ghost" id="btnSettings" title="Production settings" disabled>⚙️</button>
+      <button class="btn primary" id="btnNew">＋ <span class="hide-sm">New film</span></button>
+    </div>
+  </header>
+
+  <section class="command" id="dropZone">
+    <div class="attach-row" id="attachRow"></div>
+    <div class="command-row">
+      <label class="btn icon attach-btn" title="Upload images, video frames, scripts, notes">
+        📎<input type="file" id="fileInput" multiple hidden>
+      </label>
+      <textarea id="cmdInput" rows="1" placeholder="Pitch your film idea to Captain Clipboard… (drop files anywhere)"></textarea>
+      <button class="btn primary send" id="btnSend" title="Send (Enter)">Send ➤</button>
+    </div>
+    <div class="cmd-hint" id="cmdHint">You only talk to <b>Captain Clipboard</b>, the coordinator. Tell it your idea, upload references, or comment while the crew works.</div>
+  </section>
+
+  <main class="layout">
+    <section class="studio-wrap" id="studioWrap">
+      <svg id="studio" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Isometric view of the robot film studio"></svg>
+      <div class="hud hud-tl">
+        <div class="hud-stage" id="hudStage">Studio idle — waiting for a pitch</div>
+      </div>
+      <div class="hud hud-tr">
+        <button class="chip-btn" id="btnFollow" aria-pressed="true" title="Camera follows the action">🎥 Follow</button>
+        <button class="chip-btn" id="btnOverview" title="See the whole studio">🗺 Overview</button>
+        <button class="chip-btn" id="btnZoomIn" title="Zoom in">＋</button>
+        <button class="chip-btn" id="btnZoomOut" title="Zoom out">－</button>
+      </div>
+      <div class="hud hud-bl ticker" id="ticker" aria-live="polite"></div>
+      <div class="room-card" id="roomCard" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <nav class="tabs" role="tablist">
+        <button role="tab" class="tab active" data-tab="chat" aria-selected="true">💬 Chat</button>
+        <button role="tab" class="tab" data-tab="preview" aria-selected="false">👁 Preview</button>
+        <button role="tab" class="tab" data-tab="pipeline" aria-selected="false">🧭 Pipeline</button>
+      </nav>
+      <div class="tab-body" id="tab-chat">
+        <div class="chat-tools">
+          <label class="toggle"><input type="checkbox" id="chkChatter" checked> Show team chatter</label>
+        </div>
+        <div class="chat" id="chatLog" aria-live="polite"></div>
+        <div class="review-card" id="reviewCard" hidden></div>
+      </div>
+      <div class="tab-body" id="tab-preview" hidden>
+        <div class="preview-bar">
+          <select id="previewSelect" aria-label="Choose a document to preview"></select>
+          <div class="seg" id="previewMode">
+            <button class="seg-btn active" data-mode="doc">Doc</button>
+            <button class="seg-btn" data-mode="board">Board</button>
+            <button class="seg-btn" data-mode="animatic">▶ Animatic</button>
+            <button class="seg-btn" data-mode="master">Master</button>
+          </div>
+        </div>
+        <div class="preview" id="previewBody"></div>
+      </div>
+      <div class="tab-body" id="tab-pipeline" hidden>
+        <div class="run-controls" id="runControls"></div>
+        <ol class="pipeline" id="pipelineList"></ol>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="tracker" id="tracker" aria-label="Production stages"></footer>
+</div>
+
+<div class="modal-back" id="modalBack" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="modal"></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="application/json" id="skillData">__SKILL_DATA__</script>
+<script>
+/*__JS__*/
+</script>

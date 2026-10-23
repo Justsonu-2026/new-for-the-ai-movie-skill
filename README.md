@@ -9,7 +9,8 @@ plugin marketplace; each skill also works on its own.
 dependencies) · [docs/DESIGN.md](docs/DESIGN.md) (why it is split this way) ·
 [docs/research/RESEARCH.md](docs/research/RESEARCH.md) (sources and trust levels) ·
 [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md) (what was tested, what failed, what was fixed) ·
-[examples/](examples/) (a sample film taken through the pipeline).
+[examples/](examples/) (a sample film taken through the pipeline) ·
+[apps/robot-studio/](apps/robot-studio/) (Robo Film Studio: the crew as animated robots in a claude.ai Artifact).
 
 ## The crew
 
@@ -84,6 +85,7 @@ shared/                             canonical shared files (synced into each ski
 tools/                              lint, sync, eval cases, install, package, stage runner
 tests/                              unit tests for the scripts
 docs/                               design, research, test results
+apps/robot-studio/                  Robo Film Studio artifact app (source, build, e2e test)
 examples/                           sample production
 ```
 
