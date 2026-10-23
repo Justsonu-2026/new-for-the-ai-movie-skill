@@ -15,8 +15,17 @@ fs.writeFileSync(path.join(OUT, 'harness.html'), '<!doctype html><html><head><me
 const shot = (n) => path.join(OUT, n + '.png');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const THREE_ESM = 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+function addonSource(rel) {
+  const file = path.join(DEPS, 'node_modules/three/examples/jsm', rel);
+  let src = fs.readFileSync(file, 'utf8');
+  src = src.replace(/from\s+['"]three['"]/g, `from '${THREE_ESM}'`);
+  src = src.replace(/from\s+['"](\.{1,2}\/[^'"]+)['"]/g, (m, r) => `from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/${path.posix.normalize(path.posix.join(path.posix.dirname(rel), r))}/+esm'`);
+  return src;
+}
 async function routes(ctx) {
-  await ctx.route('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', (r) => r.fulfill({ path: path.join(DEPS, 'node_modules/three/build/three.module.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+  await ctx.route(THREE_ESM, (r) => r.fulfill({ path: path.join(DEPS, 'node_modules/three/build/three.module.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+  await ctx.route(/three@0\.160\.0\/examples\/jsm\/(.+)\/\+esm$/, (r) => { const rel = r.request().url().match(/examples\/jsm\/(.+)\/\+esm$/)[1]; r.fulfill({ body: addonSource(rel), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }); });
   await ctx.route('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm', (r) => r.fulfill({ path: path.join(DEPS, 'sdk.esm.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
 }
@@ -46,7 +55,7 @@ async function routes(ctx) {
   await page.fill('#cmdInput', 'Please add more rain everywhere');
   await page.press('#cmdInput', 'Enter');
   await page.click('.nav-btn[data-page=studio]');
-  for (let k = 0; k < 4; k++) { await sleep(1800); await page.screenshot({ path: shot('03-studio-director-' + k) }); }
+  for (let k = 0; k < 6; k++) { await sleep(1800); await page.screenshot({ path: shot('03-studio-director-' + k) }); }
   await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 120000 });
   console.log('GATE 1:', await page.textContent('#reviewCard .review-head b'));
   await page.screenshot({ path: shot('04-cabin-review') });
@@ -133,7 +142,7 @@ async function routes(ctx) {
   await s.goto('file://' + path.join(ROOT, 'robot-studio-standalone.html'));
   await s.waitForSelector('.key-card', { timeout: 30000 });
   await s.screenshot({ path: shot('17-standalone-keys') });
-  await s.fill('.key-card:has-text("Anthropic") input[type=password]', 'sk-ant-test-key');
+  await s.fill('.key-card:has-text("Claude brain") input[type=password]', 'sk-ant-test-key');
   await s.click('text=Save keys');
   await s.click('.nav-btn[data-page=lobby]');
   await s.fill('.newfilm textarea', 'A frog ferry in a storm');

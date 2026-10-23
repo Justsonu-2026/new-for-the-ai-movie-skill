@@ -77,8 +77,8 @@ const OPTIONS = {
   aspect: ['16:9', '9:16', '1:1', '2.39:1', '4:5'],
   medium: ['photoreal live action', 'stylized 3D animation', '2D cel animation', 'anime', 'stop-motion / claymation', 'pixel art', 'watercolor illustration'],
   genre: ['drama', 'comedy', 'horror', 'romance', 'thriller', 'action', 'sci-fi', 'fantasy', 'mystery', 'music video', 'commercial / ad', 'documentary style'],
-  imageModel: ['Nano Banana / Gemini image', 'GPT Image', 'Midjourney', 'Flux', 'Seedream', 'Higgsfield Soul', 'Imagen', 'not decided'],
-  videoModel: ['Veo 3.1', 'Kling', 'Seedance', 'Runway', 'Sora', 'Hailuo / MiniMax', 'Higgsfield', 'not decided'],
+  imageModel: ['Magnific (Mystic / Seedream / Flux)', 'Nano Banana / Gemini image', 'GPT Image', 'Midjourney', 'Flux', 'Seedream', 'Higgsfield Soul', 'Imagen', 'not decided'],
+  videoModel: ['Magnific (Kling / Veo / WAN)', 'Veo 3.1', 'Kling', 'Seedance', 'Runway', 'Sora', 'Hailuo / MiniMax', 'Higgsfield', 'not decided'],
   language: ['English', 'Hindi', 'Hinglish', 'Spanish', 'French', 'Japanese', 'no dialogue'],
 };
 const PRESETS = {

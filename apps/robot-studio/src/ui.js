@@ -452,7 +452,7 @@ const UI = (() => {
   // ----- pictures: code-made images, and real images with your keys -----
   function keyedProviders(kind) {
     const k = Keys.get(P() && P().id);
-    return ['fal', 'openai', 'google'].filter((x) => k[x] && k[x].key && (kind !== 'video' || k[x].videoModel !== '-'));
+    return ['magnific'].filter((x) => k[x] && k[x].key);
   }
   function promptCard(stage, x) {
     const p = P();
@@ -463,7 +463,7 @@ const UI = (() => {
       h('div', { class: 'prompt-actions' }, h('button', { class: 'btn small ghost', onclick: () => copyText(x.prompt || '') }, '📋 Copy'),
         stage === 'images' ? h('button', { class: 'btn small', onclick: (e) => makeCodeImage(x, out, e.target) }, '🎨 Code image') : null,
         ...provs.map((pv) => h('button', { class: 'btn small primary', onclick: (e) => genWithKey(stage, pv, x, out, e.target) }, `${stage === 'video' ? '🎬' : '🖼️'} ${PROVIDERS[pv].label}`)),
-        !provs.length ? h('button', { class: 'btn small ghost', title: 'Add an API key to generate real pictures and video', onclick: () => goPage('keys') }, '🔑 Add a key to generate') : null),
+        !provs.length ? h('button', { class: 'btn small ghost', title: 'Add your Magnific API key to generate real pictures and video', onclick: () => goPage('keys') }, '🔑 Add Magnific key') : null),
       out);
     if (generated[x.id]) showGenerated(out, generated[x.id]);
     void p;
@@ -798,12 +798,12 @@ const UI = (() => {
     const keys = JSON.parse(JSON.stringify(Keys.get(p && p.id)));
     const inClaude = Brain.mode() === 'claude';
     const asDefault = h('input', { type: 'checkbox', checked: Keys.isDefault() || !p ? true : null });
-    const cards2 = Object.entries(PROVIDERS).map(([pid, pv]) => {
+    const cards2 = Object.entries(PROVIDERS).filter(([, pv]) => !pv.apiOnly || !inClaude).map(([pid, pv]) => {
       keys[pid] = keys[pid] || {};
       const out = h('small', { class: 'muted' });
       const keyIn = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Paste your API key', value: keys[pid].key || '', oninput: (e) => { keys[pid].key = e.target.value.trim(); } });
       const show = h('button', { class: 'btn small ghost', type: 'button', onclick: () => { keyIn.type = keyIn.type === 'password' ? 'text' : 'password'; } }, '👁');
-      const fields = pv.fields.map(([f, label, def]) => field(label, h('input', { type: 'text', value: keys[pid][f] || def, oninput: (e) => { keys[pid][f] = e.target.value.trim(); } })));
+      const fields = pv.fields.map(([f, label, def, opts]) => { const dl = 'dl-' + pid + f; return field(label, h('span', {}, h('input', { type: 'text', list: dl, value: keys[pid][f] || def, oninput: (e) => { keys[pid][f] = e.target.value.trim(); } }), h('datalist', { id: dl }, ...(opts || []).map((o) => h('option', { value: o }))))); });
       for (const [f, , def] of pv.fields) if (!keys[pid][f]) keys[pid][f] = def;
       return h('div', { class: 'card key-card' + (keys[pid].key ? ' has' : '') },
         h('div', { class: 'key-head' }, h('b', {}, pv.label), keys[pid].key ? h('span', { class: 'tag' }, '✓ key set') : null),
@@ -818,12 +818,12 @@ const UI = (() => {
       h('h2', {}, '🔑 API keys'),
       h('div', { class: 'card note ' + (inClaude ? 'warn' : 'ok') },
         inClaude
-          ? [h('b', {}, 'You are inside claude.ai. '), 'Here the robots think with your Claude account, and Claude makes the pictures and the previz video with code: no keys needed. claude.ai does not let pages call outside services, so image/video keys only work when you run the studio on your own computer.', hasHomeCopy() ? h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: takeHome }, '📥 Take the studio home (.html)')) : null]
-          : [h('b', {}, 'Running on your computer. '), 'The robots use your Anthropic key; image and video buttons use the providers you add. Keys are stored only in this browser, never in exports.']),
+          ? [h('b', {}, 'You are inside claude.ai. '), 'Here the robots think with your Claude account and make pictures and the previz video with code. claude.ai does not let pages call outside services, so your Magnific key works when you run the studio file on your own computer.', hasHomeCopy() ? h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: takeHome }, '📥 Take the studio home (.html)')) : null]
+          : [h('b', {}, 'Running on your computer. '), 'The robots use your Claude brain key; the 🖼️ Magnific buttons use your Magnific key. Keys are stored only in this browser, never in exports.']),
       ...cards2,
       h('label', { class: 'toggle' }, asDefault, ' Use these keys for all my films (otherwise only for this film)'),
       h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => { saveKeys(); toast('Keys saved in this browser 🔑'); renderKeys(); } }, '💾 Save keys')),
-      h('p', { class: 'fineprint' }, 'Keys stay in this browser\'s storage for this studio only. They are not saved to your account, not shown to the robots and not included in project files. Generation calls go straight from your browser to the provider and use your credits there. The provider calls follow each provider\'s public API but have not been tested from this page; if one fails, check the model name above against the provider\'s docs.')));
+      h('p', { class: 'fineprint' }, 'Keys stay in this browser\'s storage only. They are not saved to your account, not shown to the robots and not included in project files. Magnific calls go straight from your browser to api.magnific.com and use your Magnific credits. The calls follow Magnific\'s public API docs but were not tested from this page; if one fails, the card shows Magnific\'s error message.')));
   }
   function hasHomeCopy() { const e2 = document.getElementById('homeCopy'); return !!(e2 && e2.textContent.trim().length > 100); }
   async function takeHome() {
@@ -979,6 +979,7 @@ const UI = (() => {
     $('#btnZoomIn').addEventListener('click', () => { if (studioCam !== 'top') setStudioCam('top'); W.zoom(0.8); });
     $('#btnZoomOut').addEventListener('click', () => { if (studioCam !== 'top') setStudioCam('top'); W.zoom(1.25); });
     W.onClick(showRoomCard);
+    $('#btnHd').addEventListener('click', () => { const on = !W.hd(); W.setHd(on); $('#btnHd').setAttribute('aria-pressed', on ? 'true' : 'false'); toast(on ? 'HD on: shadows and glow ✨' : 'HD off: faster on slow devices'); });
 
     Engine.on('chat', (m) => { renderChatMsg(m); if (page !== 'cabin' && !m.team && m.from !== 'user') { unread++; renderHeader(); if (m.from === COORD) toast(`📋 ${String(m.text).slice(0, 140)}`, 4200); } });
     Engine.on('change', () => { renderAll(); applyCrew(); });

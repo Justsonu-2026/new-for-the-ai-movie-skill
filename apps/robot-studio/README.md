@@ -26,8 +26,15 @@ of the following:
 
 ## The 3D studio
 
-- Built with three.js 0.160 (loaded from jsdelivr). There is a coordinator's cabin with a city window, a
-  mission board, a live-feed TV, an oil bar, a sofa and trophies.
+- Built with three.js 0.160 (loaded from jsdelivr).
+- The look: a warm evening studio under a night sky, with environment lighting, soft shadows, bloom glow on
+  lamps, screens and neon, and glossy toy-plastic robots. ✨ HD in the Studio bar turns shadows and glow off
+  for slow devices.
+- Rooms have wood floors, patterned wallpaper in the robot's colours, wainscot and trims, a night-sky window,
+  a pendant lamp, the robot's poster, a rug, a desk with drawers, a live monitor and a desk lamp, and an
+  office chair.
+- The coordinator's cabin has herringbone parquet, a night-city window wall, a mission board, a live-feed
+  TV, an oil bar, a sofa, trophies and posters. A neon ROBO FILM STUDIO sign is over the hallway.
 - Each of the other 19 robots has its own room along a hallway. Every room has a door sign, a desk with a
   monitor that shows the robot's live text, and furniture themed to its job. For example: a piano and
   speakers for music, a camera on a tripod and light stands for the cinematographer, a vocal booth for
@@ -51,24 +58,31 @@ of the following:
   - rebuilding any single shot with a note
 - **Code image:** each image prompt card can be turned into a 3D still.
 
-## Your own API keys
+## Your Magnific API key
 
-The 🔑 Keys page stores keys only in this browser (per film, or for all films). They are never saved to
-your account, never shown to the robots, and never put in exports.
+The 🔑 Keys page has one generation service: **Magnific**. Add your Magnific API key (Business or Enterprise
+plan; create it in Magnific → Settings → API Keys) and every image prompt and video prompt card gets a 🖼️
+Magnific button. The calls follow Magnific's API docs:
+- base URL `https://api.magnific.com/v1/ai/`
+- the key goes in the `x-magnific-api-key` header
+- each generation is a task, polled at `GET <model path>/<task id>` until `COMPLETED`, and the result is
+  read from `generated`
 
-| Provider | Used for | Default model ids (editable) |
-|---|---|---|
-| Anthropic | the robots' brains when the studio runs on your computer | Opus 5.5 (Haiku 5.5 for quick chat) |
-| fal.ai | images and video | `fal-ai/flux/dev`, `fal-ai/kling-video/v2.1/standard/text-to-video` |
-| OpenAI | images and video | `gpt-image-1`, `sora-2` |
-| Google Gemini | images and video | `gemini-2.5-flash-image`, `veo-3.0-generate-001` |
+The model paths are editable. The image defaults are `mystic`, `text-to-image/seedream-v4` and
+`text-to-image/flux-dev`. The video defaults are `text-to-video/wan-v2-6-720p`,
+`text-to-video/veo-3-1-lite` and `video/kling-v3-pro`.
 
-**Important:** claude.ai does not let artifact pages call outside services. Inside claude.ai the robots
-think with your Claude account, and pictures and video are made with code, so no keys are needed there.
-To use your image and video keys, press **📥 Take the studio home**: it saves `robo-film-studio.html`
-(also in this folder as `robot-studio-standalone.html`). Open that file in Chrome or Edge and add your
-keys. There, the robots use the Anthropic SDK with your key, and the Generate buttons call your providers
-directly from your browser.
+Keys are stored only in this browser (per film, or for all films). They are never saved to your account,
+never shown to the robots, and never put in exports.
+
+**Important:** claude.ai does not let artifact pages call outside services, so inside claude.ai the Magnific
+buttons cannot reach Magnific. There, the robots think with your Claude account, and pictures and the previz
+video are made with code. Press **📥 Take the studio home** to save `robo-film-studio.html` (also in this
+folder as `robot-studio-standalone.html`). Open it in Chrome or Edge on your computer and add your Magnific
+key there.
+
+That file also needs one more key, the Claude brain (an Anthropic API key), because outside claude.ai the
+robots have no other way to think. That card only appears in the downloaded file.
 
 ## How the skills are used
 
@@ -103,8 +117,8 @@ API. It checks:
 ## Limits
 
 - Every stage spends Claude usage: about 25-40 calls per full run, plus sketches and previz.
-- The fal.ai, OpenAI and Google calls follow each provider's public REST API but were not run against the
-  real services. If one fails, the card shows the provider's error; check the model id against their docs.
+- The Magnific calls follow Magnific's public API docs but were not run against the real service (no key was
+  available). If Magnific rejects browser calls (CORS) or a field, the card shows Magnific's error message.
 - The previz is a blocking and timing tool made of simple shapes, not final-quality video.
 - `.webm` export records in real time, so a 60-second film takes about 60 seconds to export.
 - The deterministic validator (`validate_production.py`) does not run in the browser. QC here is a model

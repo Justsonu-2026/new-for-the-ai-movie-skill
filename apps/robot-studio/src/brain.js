@@ -4,10 +4,8 @@ const API_MODELS = { quick: 'claude-haiku-5-5', default: 'claude-opus-5-5', comp
 const API_EFFORT = { quick: 'low', default: 'medium', complex: 'high' };
 
 const PROVIDERS = {
-  anthropic: { label: 'Anthropic (Claude)', hint: 'Gives the robots their brains when you run the studio on your own computer. Inside claude.ai the robots use your Claude account instead, so this key is not needed there.', link: 'console.anthropic.com', fields: [] },
-  fal: { label: 'fal.ai', hint: 'One key for many image and video models (Flux, Kling, Veo, Seedance…). Put any fal model id below.', link: 'fal.ai/dashboard/keys', fields: [['imageModel', 'Image model', 'fal-ai/flux/dev'], ['videoModel', 'Video model', 'fal-ai/kling-video/v2.1/standard/text-to-video']] },
-  openai: { label: 'OpenAI', hint: 'GPT Image for pictures, Sora for video.', link: 'platform.openai.com/api-keys', fields: [['imageModel', 'Image model', 'gpt-image-1'], ['videoModel', 'Video model', 'sora-2']] },
-  google: { label: 'Google Gemini', hint: 'Gemini image (Nano Banana) for pictures, Veo for video.', link: 'aistudio.google.com/apikey', fields: [['imageModel', 'Image model', 'gemini-2.5-flash-image'], ['videoModel', 'Video model', 'veo-3.0-generate-001']] },
+  magnific: { label: 'Magnific', hint: 'Makes real pictures and video for your film with your Magnific API key (Business or Enterprise plan; create the key in Magnific → Settings → API Keys).', link: 'magnific.com', fields: [['imageModel', 'Image model', 'mystic', ['mystic', 'text-to-image/seedream-v4', 'text-to-image/flux-dev']], ['videoModel', 'Video model', 'text-to-video/wan-v2-6-720p', ['text-to-video/wan-v2-6-720p', 'text-to-video/veo-3-1-lite', 'video/kling-v3-pro']]] },
+  anthropic: { label: 'Claude brain (Anthropic key)', hint: 'Only needed when you run the studio file on your own computer: it gives the robots their brains there. Inside claude.ai the robots use your Claude account.', link: 'console.anthropic.com', fields: [], apiOnly: true },
 };
 
 const Keys = (() => {
@@ -119,90 +117,51 @@ const Brain = (() => {
 
 // ---------- image and video generation with the user's own keys ----------
 const Gen = (() => {
-  const SIZE = { '16:9': ['1536x1024', 'landscape_16_9'], '9:16': ['1024x1536', 'portrait_16_9'], '1:1': ['1024x1024', 'square_hd'], '2.39:1': ['1536x1024', 'landscape_16_9'], '4:5': ['1024x1536', 'portrait_4_3'] };
+  const MAG = 'https://api.magnific.com/v1/ai/';
+  const ASPECT = { '16:9': 'widescreen_16_9', '9:16': 'social_story_9_16', '1:1': 'square_1_1', '2.39:1': 'smartphone_horizontal_20_9', '4:5': 'social_post_4_5' };
   async function call(url, init) {
     let r;
     try { r = await fetch(url, init); }
-    catch (e) { throw { code: 'network_blocked', message: Brain.mode() === 'claude' ? 'claude.ai blocks this page from reaching outside services. Use 📥 Take the studio home and open it on your computer — your keys work there.' : 'The request could not reach the provider (network or CORS).' }; }
-    if (!r.ok) { let msg = ''; try { msg = (await r.text()).slice(0, 400); } catch (e) { /* ignore */ } throw { code: r.status === 401 || r.status === 403 ? 'bad_key' : 'provider_error', message: `${r.status}: ${msg}` }; }
+    catch (e) { throw { code: 'network_blocked', message: Brain.mode() === 'claude' ? 'claude.ai blocks this page from reaching outside services. Use 📥 Take the studio home and open it on your computer — your Magnific key works there.' : 'The request could not reach Magnific (network, or Magnific does not accept calls from a browser page).' }; }
+    if (!r.ok) { let msg = ''; try { msg = (await r.text()).slice(0, 400); } catch (e) { /* ignore */ } throw { code: r.status === 401 || r.status === 403 ? 'bad_key' : 'provider_error', message: `Magnific ${r.status}: ${msg}` }; }
     return r;
   }
   const pause = (ms, signal) => new Promise((res, rej) => { const t = setTimeout(res, ms); if (signal) signal.addEventListener('abort', () => { clearTimeout(t); rej({ code: 'cancelled' }); }, { once: true }); });
-  async function image(provider, k, prompt, aspect) {
-    const sz = SIZE[aspect] || SIZE['16:9'];
-    if (provider === 'openai') {
-      const r = await call('https://api.openai.com/v1/images/generations', { method: 'POST', headers: { Authorization: 'Bearer ' + k.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: k.imageModel || 'gpt-image-1', prompt, size: sz[0], n: 1 }) });
-      const j = await r.json(); const d = j.data && j.data[0];
-      return { url: d && (d.b64_json ? 'data:image/png;base64,' + d.b64_json : d.url) };
+  const clean = (path) => String(path || '').trim().replace(/^https?:\/\/[^/]+/, '').replace(/^\/?v1\/ai\//, '').replace(/^\/+|\/+$/g, '');
+  const first = (d) => {
+    const gen = d && (d.generated || d.images || d.videos || d.result) || [];
+    const f = Array.isArray(gen) ? gen[0] : gen;
+    if (!f) return null;
+    if (typeof f === 'string') return f;
+    return f.url || (f.base64 ? 'data:image/png;base64,' + f.base64 : null);
+  };
+  // Magnific runs every generation as a task: create it, then poll GET <model path>/<task id> until COMPLETED
+  async function magnific(kind, k, prompt, aspect, seconds, onStatus, signal) {
+    const path = clean(kind === 'video' ? k.videoModel || 'text-to-video/wan-v2-6-720p' : k.imageModel || 'mystic');
+    const head = { 'x-magnific-api-key': k.key, 'Content-Type': 'application/json' };
+    const body = { prompt, aspect_ratio: ASPECT[aspect] || 'widescreen_16_9' };
+    if (kind === 'video') body.duration = seconds <= 5 ? '5' : '10';
+    const sub = await (await call(MAG + path, { method: 'POST', headers: head, body: JSON.stringify(body) })).json();
+    const d = sub.data || sub;
+    if (first(d)) return { url: first(d) };
+    const id = d.task_id || d.id;
+    if (!id) throw { code: 'provider_error', message: 'Magnific did not return a task id.' };
+    for (let n = 0; n < 150; n++) {
+      await pause(kind === 'video' ? 5000 : 3000, signal);
+      const st = await (await call(`${MAG}${path}/${encodeURIComponent(id)}`, { headers: head })).json();
+      const dd = st.data || st;
+      onStatus && onStatus(`Magnific: ${String(dd.status || 'working').toLowerCase().replace(/_/g, ' ')}…`);
+      if (/COMPLETED|SUCCEEDED|DONE/i.test(dd.status || '')) { const u = first(dd); if (!u) throw { code: 'provider_error', message: 'Magnific finished without a file.' }; return { url: u }; }
+      if (/FAILED|ERROR|CANCEL/i.test(dd.status || '')) throw { code: 'provider_error', message: 'Magnific reported the task as ' + dd.status + '.' };
     }
-    if (provider === 'google') {
-      const r = await call(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(k.imageModel || 'gemini-2.5-flash-image')}:generateContent`, { method: 'POST', headers: { 'x-goog-api-key': k.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt}\nAspect ratio ${aspect}.` }] }] }) });
-      const j = await r.json();
-      const part = ((((j.candidates || [])[0] || {}).content || {}).parts || []).find((p) => p.inlineData || p.inline_data);
-      const d = part && (part.inlineData || part.inline_data);
-      if (!d) throw { code: 'provider_error', message: 'No image in the response.' };
-      return { url: `data:${d.mimeType || d.mime_type || 'image/png'};base64,${d.data}` };
-    }
-    if (provider === 'fal') {
-      const r = await call('https://fal.run/' + (k.imageModel || 'fal-ai/flux/dev'), { method: 'POST', headers: { Authorization: 'Key ' + k.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, image_size: sz[1] }) });
-      const j = await r.json();
-      return { url: j.images && j.images[0] && j.images[0].url };
-    }
-    throw { code: 'provider_error', message: 'Unknown provider' };
+    throw { code: 'provider_error', message: 'Timed out waiting for Magnific.' };
   }
-  async function video(provider, k, prompt, aspect, seconds, onStatus, signal) {
-    if (provider === 'fal') {
-      const model = k.videoModel || 'fal-ai/kling-video/v2.1/standard/text-to-video';
-      const head = { Authorization: 'Key ' + k.key, 'Content-Type': 'application/json' };
-      const sub = await (await call('https://queue.fal.run/' + model, { method: 'POST', headers: head, body: JSON.stringify({ prompt, aspect_ratio: aspect === '2.39:1' ? '16:9' : aspect, duration: String(seconds <= 5 ? 5 : 10) }) })).json();
-      for (let k2 = 0; k2 < 120; k2++) {
-        await pause(5000, signal);
-        const st = await (await call(sub.status_url, { headers: head })).json();
-        onStatus && onStatus(`fal: ${st.status}${st.queue_position != null ? ' · queue ' + st.queue_position : ''}`);
-        if (st.status === 'COMPLETED') { const res = await (await call(sub.response_url, { headers: head })).json(); return { url: (res.video && res.video.url) || (res.videos && res.videos[0] && res.videos[0].url) }; }
-        if (st.status === 'FAILED' || st.status === 'ERROR') throw { code: 'provider_error', message: 'fal reported a failure.' };
-      }
-      throw { code: 'provider_error', message: 'Timed out waiting for fal.' };
-    }
-    if (provider === 'openai') {
-      const head = { Authorization: 'Bearer ' + k.key, 'Content-Type': 'application/json' };
-      const size = aspect === '9:16' ? '720x1280' : '1280x720';
-      const job = await (await call('https://api.openai.com/v1/videos', { method: 'POST', headers: head, body: JSON.stringify({ model: k.videoModel || 'sora-2', prompt, size, seconds: String(seconds <= 4 ? 4 : seconds <= 8 ? 8 : 12) }) })).json();
-      for (let k2 = 0; k2 < 120; k2++) {
-        await pause(5000, signal);
-        const st = await (await call('https://api.openai.com/v1/videos/' + job.id, { headers: head })).json();
-        onStatus && onStatus(`OpenAI: ${st.status}${st.progress != null ? ' ' + st.progress + '%' : ''}`);
-        if (st.status === 'completed') { const blob = await (await call(`https://api.openai.com/v1/videos/${job.id}/content`, { headers: head })).blob(); return { url: URL.createObjectURL(blob), blob }; }
-        if (st.status === 'failed') throw { code: 'provider_error', message: (st.error && st.error.message) || 'OpenAI reported a failure.' };
-      }
-      throw { code: 'provider_error', message: 'Timed out waiting for OpenAI.' };
-    }
-    if (provider === 'google') {
-      const base = 'https://generativelanguage.googleapis.com/v1beta/';
-      const head = { 'x-goog-api-key': k.key, 'Content-Type': 'application/json' };
-      const op = await (await call(`${base}models/${encodeURIComponent(k.videoModel || 'veo-3.0-generate-001')}:predictLongRunning`, { method: 'POST', headers: head, body: JSON.stringify({ instances: [{ prompt }], parameters: { aspectRatio: aspect === '9:16' ? '9:16' : '16:9' } }) })).json();
-      for (let k2 = 0; k2 < 120; k2++) {
-        await pause(6000, signal);
-        const st = await (await call(base + op.name, { headers: head })).json();
-        onStatus && onStatus(st.done ? 'Google: done' : 'Google: generating…');
-        if (st.error) throw { code: 'provider_error', message: st.error.message };
-        if (st.done) {
-          const sm = (((st.response || {}).generateVideoResponse || {}).generatedSamples || [])[0];
-          const uri = sm && sm.video && sm.video.uri;
-          if (!uri) throw { code: 'provider_error', message: 'No video in the response.' };
-          const blob = await (await call(uri, { headers: { 'x-goog-api-key': k.key } })).blob();
-          return { url: URL.createObjectURL(blob), blob };
-        }
-      }
-      throw { code: 'provider_error', message: 'Timed out waiting for Google.' };
-    }
-    throw { code: 'provider_error', message: 'Unknown provider' };
-  }
+  const image = (provider, k, prompt, aspect) => magnific('image', k, prompt, aspect, 0);
+  const video = (provider, k, prompt, aspect, seconds, onStatus, signal) => magnific('video', k, prompt, aspect, seconds, onStatus, signal);
   async function test(provider, k) {
     if (provider === 'anthropic') { await Brain.sample('Reply with the single word: ready', { modelTier: 'quick' }); return 'Claude answered.'; }
-    if (provider === 'openai') { await call('https://api.openai.com/v1/models', { headers: { Authorization: 'Bearer ' + k.key } }); return 'Key works.'; }
-    if (provider === 'google') { await call('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': k.key } }); return 'Key works.'; }
-    return 'fal has no free test call; it is checked on the first generation.';
+    await call(MAG + clean(k.imageModel || 'mystic'), { headers: { 'x-magnific-api-key': k.key } });
+    return 'Magnific accepted the key.';
   }
   return { image, video, test };
 })();
