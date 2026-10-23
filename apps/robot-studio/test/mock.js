@@ -44,6 +44,10 @@
   const sample = async function(input, opts){
     window.__calls.push({input: typeof input==='string'?input:JSON.stringify(input), images: opts && opts.images ? opts.images.length : 0});
     if (window.__failNext) { window.__failNext=false; throw {code:'upstream_error', message:'fake'}; }
+    if (/You build the 3D previz/.test(input)) {
+      const ids = [...String(input).matchAll(/^- (SC\d+-SH\d+):/gm)].map(m=>m[1]);
+      return stream(JSON.stringify({shots: ids.map((id,i)=>window.__spec(id,i))}), opts);
+    }
     if (/drawing quick concept sketches as SVG/.test(input) || /Draw a quick concept sketch/.test(input)) {
       const ids = [...input.matchAll(/^- (\S+) — /gm)].map(m=>m[1]);
       const one = '```svg\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect x="10" y="10" width="300" height="160" fill="#e7f5ff" stroke="#333"/><circle cx="160" cy="100" r="40" fill="#69db7c" onclick="alert(1)"/><script>alert(1)<\/script><text x="20" y="30">sketch</text></svg>\n```';
@@ -54,9 +58,15 @@
     const md = `---\nid: ${key}\nversion: 1\nstatus: REVIEW\n---\n# ${key} document\n\nSome **bold** text and a table:\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- item one\n- ASSUMPTION: rain is light\n- OPEN-QUESTION: Should Dot talk?\n\n\`\`\`fountain\nEXT. PUDDLE - DAY\n\nFen waits.\n\`\`\`\n\nHandoff: done.\n\n\`\`\`json\n${JSON.stringify(data)}\n\`\`\`\n`;
     return stream(md, opts);
   };
+  window.__spec = (id, i) => ({shot:id, duration_s:1.5, sky:['#4dabf7','#fff3bf'], ground:'#8ce99a', time: i%2?'dusk':'day', weather: i%2?'rain':'none',
+    light:{color:'#fff4e0', from:'left', intensity:1.1},
+    objects:[{id:'house',shape:'house',color:'#ffd8a8',pos:[-3,0,-4],size:[3,3,3]},{id:'tree',shape:'tree',color:'#2f9e44',pos:[3,0,-3],size:[1.5,4,1.5]},{id:'puddle',shape:'water',color:'#74c0fc',pos:[0,0,0],size:[6,0.1,4]},{id:'lamp',shape:'lamp',color:'#ffe066',pos:[2,0,1],size:[1,2.5,1],glow:true}],
+    characters:[{id:'CH-FEN',name:'Fen',body:'blob',color:'#69db7c',accent:'#fcc419',height:0.6,hat:'cap',from:[-2,1],to:[1,1],face:'happy',action:'walk'},{id:'CH-DOT',name:'Dot',body:'human',color:'#e03131',skin:'#ffd8a8',height:1.6,hat:'bow',from:[2,0],to:[2,0],face:'talking',action:'wave'}],
+    camera:{from:[0,1.6,7],to:[0,1.4,5],look:[0,0.8,0],fov:45}, caption: i===0?'Dot: Hello, ferryman!':'', title: i===0?'Puddle Ferry':''});
   sample.json = async function(input, opts){
     window.__calls.push({input, json:true});
     const t = String(input);
+    if (/3D scene spec/.test(t) || /Rewrite the 3D previz scene spec/.test(t)) return window.__spec('SC01-SH010', 0);
     const msg = (t.match(/Client's new message: """([\s\S]*?)"""/)||[])[1]||'';
     if (/braver/i.test(msg)) return {reply:'On it! Making Fen braver.', actions:[{type:'change', stage:'story', text:'make Fen braver'}]};
     if (/approve|looks good/i.test(msg)) return {reply:'Approved! 🎬', actions:[{type:'approve'}]};

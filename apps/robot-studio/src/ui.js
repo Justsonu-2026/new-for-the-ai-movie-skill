@@ -1,15 +1,19 @@
-// ---------- UI ----------
+// ---------- UI: pages (Lobby, Cabin, Studio, Screening, Board, Keys) ----------
 const UI = (() => {
   let pendingUploads = [];
   let draft = null;
-  let wizardStep = 0;
-  let activeTab = 'chat';
+  let page = 'lobby';
   let previewSel = null;
   let previewMode = 'doc';
   let previewFollow = true;
+  let screenTab = 'docs';
   let renderQueued = false;
   let animatic = null;
   let downloads = null;
+  let unread = 0;
+  let studioCam = 'director';
+  let player = { ctl: null, busy: false, music: true };
+  const generated = {};
   const P = () => Engine.project();
 
   // ----- toasts and modal -----
@@ -92,9 +96,10 @@ const UI = (() => {
       }
       const u = await readUpload(f);
       pendingUploads.push(u);
-      Studio.addCrate(u.kind === 'image' ? '🖼' : u.kind === 'video' ? '🎞' : u.kind === 'text' ? '📄' : '📦');
+      W.addCrate(u.kind);
     }
     renderAttachments();
+    if (page === 'lobby') renderLobby();
   }
   function renderAttachments() {
     const row = $('#attachRow');
@@ -105,13 +110,20 @@ const UI = (() => {
     row.hidden = !pendingUploads.length;
   }
 
-  // ----- command bar -----
+  // ----- command bar: you only talk to the coordinator -----
   async function send() {
     const ta = $('#cmdInput');
     const text = ta.value.trim();
     if (!text && !pendingUploads.length) return;
     const p = P();
-    if (!p) { openWizard(text); ta.value = ''; autosize(); return; }
+    if (!p) {
+      draft = draft || defaults();
+      if (text) draft.idea = text;
+      ta.value = ''; autosize();
+      goPage('lobby');
+      toast('Captain Clipboard wrote your pitch into the new-film card. Press 🎬 Start!');
+      return;
+    }
     const ups = pendingUploads;
     pendingUploads = [];
     renderAttachments();
@@ -126,20 +138,14 @@ const UI = (() => {
   }
   function autosize() { const ta = $('#cmdInput'); ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; }
 
-  // ----- setup wizard -----
+  // ----- lobby: a simple new-film card -----
   function defaults() {
     const prev = (() => { try { return JSON.parse(localStorage.getItem('rfs:lastSettings') || 'null'); } catch (e) { return null; } })();
     const gates = Object.fromEntries(STAGES.map((x) => [x.id, !!x.gate]));
-    const base = { title: '', runtime: 60, aspect: '16:9', medium: 'stylized 3D animation', genre: 'comedy', tone: '', language: 'English', audience: 'general', imageModel: OPTIONS.imageModel[0], videoModel: OPTIONS.videoModel[0], mode: 'gates', gates, stopAfter: null, imageMode: 'prompts', autoGen: 'off', tier: 'default', depth: 'standard', chatter: true, speed: 'normal', preset: 'full', crew: Object.fromEntries(STAGE_ORDER.map((id) => [id, true])) };
-    return prev ? { ...base, ...prev, title: '', stopAfter: null, crew: { ...base.crew, ...(prev.crew || {}) }, gates: { ...gates, ...(prev.gates || {}) } } : base;
+    const base = { title: '', idea: '', runtime: 60, aspect: '16:9', medium: 'stylized 3D animation', genre: 'comedy', tone: '', language: 'English', audience: 'general', imageModel: OPTIONS.imageModel[0], videoModel: OPTIONS.videoModel[0], mode: 'auto', gates, stopAfter: null, imageMode: 'sketch', tier: 'default', depth: 'standard', chatter: true, speed: 'normal', preset: 'full', crew: Object.fromEntries(STAGE_ORDER.map((id) => [id, true])) };
+    if (!prev) return base;
+    return { ...base, ...prev, title: '', idea: '', stopAfter: null, imageMode: prev.imageMode === 'prompts' ? 'prompts' : 'sketch', crew: { ...base.crew, ...(prev.crew || {}) }, gates: { ...gates, ...(prev.gates || {}) } };
   }
-  function openWizard(idea) {
-    draft = defaults();
-    draft.idea = idea || '';
-    wizardStep = 0;
-    renderWizard();
-  }
-  const WSTEPS = ['💡 Idea', '🎞 Format', '🤖 Crew', '⚙️ Workflow'];
   function field(label, control, hint) { return h('label', { class: 'field' }, h('span', { class: 'field-label' }, label), control, hint ? h('small', { class: 'field-hint' }, hint) : null); }
   function select(key, list, fmt) {
     const sel = h('select', { onchange: (e) => { draft[key] = isNaN(+e.target.value) || key !== 'runtime' ? e.target.value : +e.target.value; } });
@@ -152,74 +158,75 @@ const UI = (() => {
   function cards(key, map, after, rerender) {
     return h('div', { class: 'choice-grid' }, ...Object.entries(map).map(([k, v]) => h('button', {
       class: 'choice' + (draft[key] === k ? ' on' : ''), type: 'button', 'aria-pressed': draft[key] === k ? 'true' : 'false',
-      onclick: () => { draft[key] = k; if (after) after(k); (rerender || renderWizard)(); },
+      onclick: () => { draft[key] = k; if (after) after(k); (rerender || renderLobby)(); },
     }, h('b', {}, v.label || v), v.hint ? h('small', {}, v.hint) : null)));
   }
-  function renderWizard() {
-    const body = h('div', { class: 'wiz-body' });
-    if (wizardStep === 0) {
-      const ta = h('textarea', { rows: 4, placeholder: 'e.g. A grumpy pigeon becomes the city\'s first traffic cop…', oninput: (e) => { draft.idea = e.target.value; } }, draft.idea || '');
-      add(body, 
-        field('What\'s the film about?', ta),
-        h('div', { class: 'dice-row' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => { draft.idea = IDEA_DICE[Math.floor(Math.random() * IDEA_DICE.length)]; renderWizard(); } }, '🎲 Surprise me'),
-          h('label', { class: 'btn ghost' }, '📎 Add references', h('input', { type: 'file', multiple: true, hidden: true, onchange: async (e) => { await addFiles(e.target.files); renderWizard(); } }))),
-        pendingUploads.length ? h('div', { class: 'wiz-uploads' }, `📦 ${pendingUploads.length} upload(s) ready: ${pendingUploads.map((u) => u.name).join(', ')}`) : null,
-        field('Working title (optional)', h('input', { type: 'text', value: draft.title, placeholder: 'Captain Clipboard will suggest one', oninput: (e) => { draft.title = e.target.value; } })),
-      );
-    } else if (wizardStep === 1) {
-      add(body, h('div', { class: 'grid2' },
-        field('Runtime', select('runtime', OPTIONS.runtime)), field('Aspect ratio', select('aspect', OPTIONS.aspect)),
-        field('Visual medium', select('medium', OPTIONS.medium)), field('Genre', select('genre', OPTIONS.genre)),
-        field('Dialogue language', select('language', OPTIONS.language)), field('Tone (optional)', h('input', { type: 'text', value: draft.tone, placeholder: 'cozy, eerie, chaotic…', oninput: (e) => { draft.tone = e.target.value; } })),
-        field('Image model you use', select('imageModel', OPTIONS.imageModel)), field('Video model you use', select('videoModel', OPTIONS.videoModel)),
-      ));
-    } else if (wizardStep === 2) {
-      const applyPreset = (k) => { const set = new Set(PRESETS[k].stages); for (const id of STAGE_ORDER) draft.crew[id] = set.has(id); draft.preset = k; };
-      add(body, h('p', { class: 'muted' }, 'Pick a preset, then tap robots to add or remove them. Captain Clipboard always comes. Specialists (action, animation) only work when the film needs them.'),
-        cards('preset', PRESETS, applyPreset),
-        h('div', { class: 'crew-grid' }, ...[...new Set(STAGES.map((x) => x.robot))].map((rid) => {
-          const isCoord = rid === COORD;
-          const stagesOf = STAGES.filter((y) => y.robot === rid);
-          const on = isCoord || stagesOf.every((y) => draft.crew[y.id] !== false);
-          return h('button', { type: 'button', class: 'crew-card' + (on ? ' on' : '') + (isCoord ? ' locked' : ''), 'aria-pressed': on ? 'true' : 'false', disabled: isCoord ? true : null, title: isCoord ? 'The coordinator always comes' : ROBOTS[rid].job,
-            onclick: () => { for (const y of stagesOf) draft.crew[y.id] = !on; draft.preset = 'custom'; renderWizard(); } },
-          robotAvatar(rid, 46), h('b', {}, ROBOTS[rid].name), h('small', {}, ROBOTS[rid].job), h('span', { class: 'crew-check' }, isCoord ? '★' : on ? '✓' : '+'));
-        })));
-    } else {
-      const gatesBox = draft.mode === 'custom' ? h('div', { class: 'gate-list' }, h('b', {}, 'Stop for my review after:'),
-        ...STAGES.filter((x) => draft.crew[x.id] !== false).map((x) => h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: draft.gates[x.id] ? true : null, onchange: (e) => { draft.gates[x.id] = e.target.checked; } }), ` ${x.icon} ${x.title}`))) : null;
-      const stopSel = h('select', { onchange: (e) => { draft.stopAfter = e.target.value || null; } }, h('option', { value: '' }, 'Run to the end'), ...STAGES.filter((x) => draft.crew[x.id] !== false && x.id !== 'wrap').map((x) => h('option', { value: x.id, selected: draft.stopAfter === x.id ? true : null }, `Stop after ${x.title}`)));
-      add(body, 
-        h('h4', {}, 'How should the crew work?'), cards('mode', MODES), gatesBox,
-        h('div', { class: 'grid2' }, field('Where should it stop?', stopSel, 'You can continue from there any time.'),
-          field('Brain power', select('tier', Object.entries(TIERS)), 'Best thinks longest and uses the most Claude usage.')),
-        h('h4', {}, 'Pictures'), cards('imageMode', IMAGE_MODES),
-        h('div', { class: 'grid2' },
-          field('Detail level', select('depth', Object.entries(DEPTHS).map(([k, v]) => [k, `${v.label} — ${v.hint}`]))),
-          field('Animation speed', select('speed', [['chill', '🐢 Chill'], ['normal', '🚶 Normal'], ['turbo', '🚀 Turbo']]))),
-        h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: draft.chatter ? true : null, onchange: (e) => { draft.chatter = e.target.checked; } }), ' Show the robots\' team chatter in the chat'),
-        h('p', { class: 'fineprint' }, 'Robots think with Claude on your own account: the first start asks you to allow it. Every stage is one or more Claude calls (shot records: one per scene; sketches: extra calls). Nothing is generated on other services unless you press a Generate button.'),
-      );
-    }
-    const nav = h('div', { class: 'wiz-nav' },
-      h('button', { class: 'btn ghost', type: 'button', onclick: () => { if (wizardStep) { wizardStep--; renderWizard(); } else closeModal(); } }, wizardStep ? '← Back' : 'Cancel'),
-      wizardStep < 3 ? h('button', { class: 'btn primary', type: 'button', onclick: () => { if (wizardStep === 0 && !draft.idea.trim()) { toast('Give the crew a pitch first (or roll the dice 🎲).'); return; } wizardStep++; renderWizard(); } }, 'Next →')
-        : h('button', { class: 'btn primary big', type: 'button', onclick: startProduction }, '🎬 Start production!'));
-    const steps = h('ol', { class: 'wiz-steps' }, ...WSTEPS.map((t, i) => h('li', { class: i === wizardStep ? 'on' : i < wizardStep ? 'done' : '', onclick: () => { if (i < wizardStep || draft.idea.trim()) { wizardStep = i; renderWizard(); } } }, t)));
-    openModal(h('div', { class: 'wizard' }, h('div', { class: 'wiz-head' }, robotAvatar(COORD, 54), h('div', {}, h('h2', { id: 'modalTitle' }, 'New film'), h('p', { class: 'muted' }, 'Captain Clipboard sets up the production. You can change most of this later in ⚙️.'))), steps, body, nav), 'wide');
+  function chips(key, list, rerender) {
+    return h('div', { class: 'chips-row' }, ...list.map(([v, l]) => h('button', { type: 'button', class: 'pick' + (String(draft[key]) === String(v) ? ' on' : ''), 'aria-pressed': String(draft[key]) === String(v) ? 'true' : 'false', onclick: () => { draft[key] = v; (rerender || renderLobby)(); } }, l)));
+  }
+  function renderLobby() {
+    const el = $('#page-lobby');
+    draft = draft || defaults();
+    const idea = h('textarea', { rows: 3, placeholder: 'e.g. A grumpy pigeon becomes the city\'s first traffic cop…', oninput: (e) => { draft.idea = e.target.value; } }, draft.idea || '');
+    const crewGrid = h('div', { class: 'crew-grid' }, ...[...new Set(STAGES.map((x) => x.robot))].map((rid) => {
+      const isCoord = rid === COORD;
+      const stagesOf = STAGES.filter((y) => y.robot === rid);
+      const on = isCoord || stagesOf.every((y) => draft.crew[y.id] !== false);
+      return h('button', { type: 'button', class: 'crew-card' + (on ? ' on' : '') + (isCoord ? ' locked' : ''), 'aria-pressed': on ? 'true' : 'false', disabled: isCoord ? true : null, title: ROBOTS[rid].job,
+        onclick: () => { for (const y of stagesOf) draft.crew[y.id] = !on; draft.preset = 'custom'; renderLobby(); } },
+      robotAvatar(rid, 40), h('b', {}, ROBOTS[rid].name), h('small', {}, ROBOTS[rid].job), h('span', { class: 'crew-check' }, isCoord ? '★' : on ? '✓' : '+'));
+    }));
+    const applyPreset = (k) => { const set = new Set(PRESETS[k].stages); for (const id of STAGE_ORDER) draft.crew[id] = set.has(id); draft.preset = k; };
+    const stopSel = h('select', { onchange: (e) => { draft.stopAfter = e.target.value || null; } }, h('option', { value: '' }, 'Run to the end'), ...STAGES.filter((x) => draft.crew[x.id] !== false && x.id !== 'wrap').map((x) => h('option', { value: x.id, selected: draft.stopAfter === x.id ? true : null }, `Stop after ${x.title}`)));
+    const more = h('details', { class: 'more', open: draft.moreOpen ? true : null, ontoggle: (e) => { draft.moreOpen = e.target.open; } }, h('summary', {}, '⚙️ More options (genre, format, crew, stop point…)'),
+      h('div', { class: 'grid3' },
+        field('Genre', select('genre', OPTIONS.genre)), field('Aspect ratio', select('aspect', OPTIONS.aspect)), field('Dialogue language', select('language', OPTIONS.language)),
+        field('Image tool you use', select('imageModel', OPTIONS.imageModel)), field('Video tool you use', select('videoModel', OPTIONS.videoModel)), field('Where should it stop?', stopSel),
+        field('Detail level', select('depth', Object.entries(DEPTHS).map(([k, v]) => [k, `${v.label} — ${v.hint}`]))), field('Brain power', select('tier', Object.entries(TIERS))), field('Animation speed', select('speed', [['chill', '🐢 Chill'], ['normal', '🚶 Normal'], ['turbo', '🚀 Turbo']]))),
+      h('h4', {}, 'Custom review stops'),
+      h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: draft.mode === 'custom' ? true : null, onchange: (e) => { draft.mode = e.target.checked ? 'custom' : 'gates'; renderLobby(); } }), ' Let me pick exactly which steps stop for my review'),
+      draft.mode === 'custom' ? h('div', { class: 'gate-list' }, ...STAGES.filter((x) => draft.crew[x.id] !== false).map((x) => h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: draft.gates[x.id] ? true : null, onchange: (e) => { draft.gates[x.id] = e.target.checked; } }), ` ${x.icon} ${x.title}`))) : null,
+      h('h4', {}, 'Crew'), cards('preset', PRESETS, applyPreset, renderLobby), crewGrid,
+      h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: draft.chatter ? true : null, onchange: (e) => { draft.chatter = e.target.checked; } }), ' Show the robots\' team chatter in the chat'));
+    const list = h('div', { class: 'films' }, h('p', { class: 'muted' }, 'Loading your films…'));
+    const homeBtn = hasHomeCopy() ? h('button', { class: 'btn ghost', onclick: takeHome }, '📥 Take the studio home') : null;
+    fill(el, h('div', { class: 'lobby' },
+      h('div', { class: 'hero' }, robotAvatar(COORD, 88), h('div', {}, h('h1', {}, 'Robo Film Studio'), h('p', {}, '20 robot film-crew members, one per skill. Pitch an idea to Captain Clipboard and watch the crew make your film in 3D.'))),
+      h('div', { class: 'card newfilm' },
+        h('h2', {}, '🎬 New film'),
+        idea,
+        h('div', { class: 'dice-row' }, h('button', { class: 'btn ghost small', type: 'button', onclick: () => { draft.idea = IDEA_DICE[Math.floor(Math.random() * IDEA_DICE.length)]; renderLobby(); } }, '🎲 Surprise me'),
+          h('label', { class: 'btn ghost small' }, '📎 Add references', h('input', { type: 'file', multiple: true, hidden: true, onchange: (e) => addFiles(e.target.files) })),
+          pendingUploads.length ? h('span', { class: 'muted small' }, `📦 ${pendingUploads.length} file(s) ready`) : null),
+        h('div', { class: 'quick' }, h('span', { class: 'q-label' }, 'Length'), chips('runtime', LENGTHS)),
+        h('div', { class: 'quick' }, h('span', { class: 'q-label' }, 'Look'), chips('medium', LOOKS)),
+        h('div', { class: 'quick' }, h('span', { class: 'q-label' }, 'How it runs'), chips('mode', draft.mode === 'custom' ? [...QUICK_MODES, ['custom', '🛠 Custom']] : QUICK_MODES)),
+        h('label', { class: 'toggle big' }, h('input', { type: 'checkbox', checked: draft.imageMode !== 'prompts' ? true : null, onchange: (e) => { draft.imageMode = e.target.checked ? 'sketch' : 'prompts'; } }), ' 🎨 Claude makes pictures and a 3D previz video with code'),
+        more,
+        h('div', { class: 'start-row' }, h('button', { class: 'btn primary big', onclick: startProduction }, '🎬 Start production!'), h('small', { class: 'muted' }, Brain.mode() === 'api' ? 'Running on your computer: the robots use your Anthropic key (🔑 Keys).' : 'Robots think with Claude on your account; the first start asks you to allow it.'))),
+      h('div', { class: 'card' }, h('h2', {}, '🗂 Your films'), list, h('div', { class: 'row' }, h('label', { class: 'btn ghost small' }, '📥 Import project file', h('input', { type: 'file', accept: '.json', hidden: true, onchange: (e) => addFiles(e.target.files) })), homeBtn)),
+      h('div', { class: 'card' }, h('h2', {}, '🤖 Meet the crew'), h('p', { class: 'muted' }, 'Each robot runs one of the film-crew skills and has its own room. Tap one to visit.'),
+        h('div', { class: 'crew-grid' }, ...Object.keys(ROBOTS).map((rid) => h('button', { class: 'crew-card on', onclick: () => visitRoom(rid) }, robotAvatar(rid, 40), h('b', {}, ROBOTS[rid].name), h('small', {}, ROBOTS[rid].job)))))));
+    Store.listProjects().then((items) => {
+      fill(list, items.length ? h('ul', { class: 'proj-list' }, ...items.map((x) => h('li', {}, h('div', {}, h('b', {}, x.title), h('small', {}, `${x.progress ? x.progress.done + '/' + x.progress.total + ' stages' : ''} · ${x.updated ? new Date(x.updated).toLocaleString() : ''}`)),
+        h('div', { class: 'row' }, h('button', { class: 'btn small primary', onclick: () => openProject(x.id) }, 'Open'), (() => { const del = h('button', { class: 'btn small ghost', title: 'Delete', onclick: () => { if (del.dataset.armed) { Store.deleteProject(x.id).then(renderLobby); return; } del.dataset.armed = '1'; del.textContent = 'Really delete?'; del.classList.add('danger'); } }, '🗑'); return del; })())))) : h('p', { class: 'muted' }, 'No saved films yet.'));
+    });
   }
   function startProduction() {
-    try { const { idea, title, ...keep } = draft; localStorage.setItem('rfs:lastSettings', JSON.stringify(keep)); } catch (e) { /* ignore */ }
-    const p = Engine.newProject({ ...draft, title: draft.title.trim() }, draft.idea.trim(), pendingUploads);
+    if (Engine.isRunning()) { toast('Pause the current film first (🧭 Board).'); return; }
+    if (!String(draft.idea || '').trim()) { toast('Give the crew a pitch first (or roll the dice 🎲).'); return; }
+    try { const { idea, title, moreOpen, ...keep } = draft; localStorage.setItem('rfs:lastSettings', JSON.stringify(keep)); } catch (e) { /* ignore */ }
+    const p = Engine.newProject({ ...draft, title: (draft.title || '').trim() }, draft.idea.trim(), pendingUploads);
     pendingUploads = [];
     renderAttachments();
-    closeModal();
-    Studio.setSpeed(SPEEDS[p.settings.speed] || 1);
+    draft = null;
+    W.setSpeed(SPEEDS[p.settings.speed] || 1);
     applyCrew();
     $('#chatLog').replaceChildren();
     previewSel = null;
     Engine.chat('user', `🎬 New film: ${p.settings.idea}`);
-    Engine.chat(COORD, `Beep beep! New production: "${p.title === 'Untitled film' ? 'working title pending' : p.title}". ${MODES[p.settings.mode].label} mode, ${STAGE_ORDER.filter(Engine.enabled).length} stages. Rolling! 🎬`);
+    Engine.chat(COORD, `Beep beep! Welcome to my cabin. New production: ${STAGE_ORDER.filter(Engine.enabled).length} stages, ${MODES[p.settings.mode].label} mode. Sit back — you can watch the crew on my big TV, or walk over to 🏢 Studio. Rolling! 🎬`);
+    goPage('cabin');
     renderAll();
     Engine.run();
   }
@@ -228,10 +235,10 @@ const UI = (() => {
     const set = new Set();
     for (const x of STAGES) if (Engine.enabled(x.id)) set.add(x.robot);
     if (p) for (const x of STAGES) if (p.stages[x.id].status === 'skipped') { const others = STAGES.filter((y) => y.robot === x.robot && y.id !== x.id && Engine.enabled(y.id)); if (!others.length) set.delete(x.robot); }
-    Studio.setCrew(set);
+    W.setCrew(set);
   }
 
-  // ----- chat -----
+  // ----- chat (in the cabin) -----
   function renderChatMsg(m) {
     const log = $('#chatLog');
     const isUser = m.from === 'user';
@@ -248,19 +255,9 @@ const UI = (() => {
   function renderChat() {
     const p = P();
     $('#chatLog').replaceChildren();
-    if (!p) { welcome(); return; }
+    if (!p) { renderChatMsg({ from: COORD, text: 'Hi! I\'m **Captain Clipboard**. 🤖📋 Have a seat! Pitch me a film in the box at the top, or start one in the 🏠 Lobby. You only ever talk to me; I keep the other 19 robots busy.' }); return; }
     for (const m of p.chat) renderChatMsg(m);
   }
-  function welcome() {
-    const log = $('#chatLog');
-    renderChatMsg({ from: COORD, text: 'Hi! I\'m **Captain Clipboard**, the coordinator of this studio. 🤖📋 Pitch me a film idea in the box at the top (or drop in references) and I\'ll set up the crew. You only ever talk to me; I keep the other 19 robots busy.' });
-    log.append(h('div', { class: 'quick-row' },
-      h('button', { class: 'btn primary', onclick: () => openWizard('') }, '＋ Start a new film'),
-      h('button', { class: 'btn ghost', onclick: () => openWizard(IDEA_DICE[Math.floor(Math.random() * IDEA_DICE.length)]) }, '🎲 Surprise me'),
-      h('button', { class: 'btn ghost', onclick: openProjects }, '🗂 Open a saved film')));
-  }
-
-  // ----- review card -----
   function renderReview() {
     const card = $('#reviewCard');
     const p = P();
@@ -282,33 +279,43 @@ const UI = (() => {
     card.hidden = false;
   }
 
-  // ----- preview -----
+  // ----- screening room -----
   function showPreview(id, mode) {
     previewSel = id;
     previewFollow = false;
-    if (mode) previewMode = mode;
-    else if (previewMode === 'master' || previewMode === 'animatic') previewMode = 'doc';
-    switchTab('preview');
-    renderPreview();
+    previewMode = mode || (previewMode === 'board' ? 'board' : 'doc');
+    screenTab = previewMode === 'board' ? 'boards' : 'docs';
+    goPage('screening');
+  }
+  function renderScreening() {
+    const el = $('#page-screening');
+    const tabs = [['docs', '📄 Documents'], ['boards', '🧩 Boards'], ['pictures', '🖼 Pictures'], ['previz', '🎬 Previz video'], ['master', '📚 Master document']];
+    const body = h('div', { class: 'screen-body', id: 'previewBody' });
+    fill(el, h('div', { class: 'screening' },
+      h('nav', { class: 'subtabs' }, ...tabs.map(([k, l]) => h('button', { class: 'subtab' + (screenTab === k ? ' on' : ''), onclick: () => { screenTab = k; stopPlayer(); renderScreening(); } }, l))),
+      ['docs', 'boards'].includes(screenTab) ? h('div', { class: 'preview-bar' }, h('select', { id: 'previewSelect', 'aria-label': 'Choose a document', onchange: (e) => { if (e.target.value === '__follow') previewFollow = true; else { previewFollow = false; previewSel = e.target.value; } renderPreview(); } })) : null,
+      body));
+    if (screenTab === 'docs' || screenTab === 'boards') { previewMode = screenTab === 'boards' ? 'board' : 'doc'; renderPreview(); }
+    else if (screenTab === 'master') fill(body, P() ? h('div', { class: 'doc', html: renderMarkdown(assembleMaster()) }) : emptyState('📚', 'No film yet', 'Start a film in the Lobby.'));
+    else if (screenTab === 'pictures') renderPictures(body);
+    else renderPreviz(body);
   }
   function renderPreviewSelect() {
     const p = P();
     const sel = $('#previewSelect');
-    const cur = previewSel;
-    fill(sel, h('option', { value: '__follow' }, '📍 Follow the live robot'), ...(p ? STAGES.filter((x) => Engine.enabled(x.id) && (p.stages[x.id].md || p.stages[x.id].liveText)).map((x) => h('option', { value: x.id, selected: !previewFollow && cur === x.id ? true : null }, `${statusIcon(p.stages[x.id].status)} ${x.icon} ${x.title} ${p.stages[x.id].version ? 'v' + p.stages[x.id].version : ''}`)) : []));
+    if (!sel) return;
+    fill(sel, h('option', { value: '__follow' }, '📍 Follow the live robot'), ...(p ? STAGES.filter((x) => Engine.enabled(x.id) && (p.stages[x.id].md || p.stages[x.id].liveText)).map((x) => h('option', { value: x.id, selected: !previewFollow && previewSel === x.id ? true : null }, `${statusIcon(p.stages[x.id].status)} ${x.icon} ${x.title} ${p.stages[x.id].version ? 'v' + p.stages[x.id].version : ''}`)) : []));
     if (previewFollow) sel.value = '__follow';
   }
   function statusIcon(stt) { return { done: '✅', working: '⚙️', review: '👀', error: '⚠️', stale: '🔁', skipped: '⏭', waiting: '⏳' }[stt] || '⏳'; }
   function queuePreview() { if (renderQueued) return; renderQueued = true; setTimeout(() => { renderQueued = false; renderPreview(); }, 350); }
   function renderPreview() {
     const body = $('#previewBody');
+    if (!body || !['docs', 'boards'].includes(screenTab)) return;
     const p = P();
-    $$('#previewMode .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === previewMode));
     if (!p) { fill(body, emptyState('🎬', 'No film yet', 'Start a new film and every robot\'s work shows up here, live, while they write.')); return; }
     if (previewFollow) previewSel = Engine.current() || previewSel || lastDone();
     renderPreviewSelect();
-    if (previewMode === 'master') { fill(body, h('div', { class: 'doc', html: renderMarkdown(assembleMaster()) })); return; }
-    if (previewMode === 'animatic') { renderAnimatic(body); return; }
     const id = previewSel;
     if (!id || !p.stages[id]) { fill(body, emptyState('⏳', 'Nothing here yet', 'The first document appears as soon as a robot starts writing.')); return; }
     const st = p.stages[id];
@@ -316,7 +323,7 @@ const UI = (() => {
     const scroll = body.scrollTop;
     const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 60;
     const head = h('div', { class: 'doc-head' }, robotAvatar(STAGE[id].robot, 36), h('div', {}, h('b', {}, `${STAGE[id].icon} ${STAGE[id].title}`), h('small', {}, `${ROBOTS[STAGE[id].robot].name} · ${st.liveText ? 'writing live…' : 'v' + st.version + ' · ' + (st.words || 0) + ' words'}`)),
-      h('div', { class: 'doc-actions' }, st.md ? h('button', { class: 'btn small ghost', onclick: () => copyText(st.md) }, '📋 Copy') : null));
+      h('div', { class: 'doc-actions' }, h('button', { class: 'btn small ghost', onclick: () => visitRoom(STAGE[id].robot) }, '🎥 Watch room'), st.md ? h('button', { class: 'btn small ghost', onclick: () => copyText(st.md) }, '📋 Copy') : null));
     if (previewMode === 'board') fill(body, head, boardFor(id));
     else fill(body, head, h('div', { class: 'doc' + (st.liveText ? ' live' : ''), html: renderMarkdown(text) }));
     if (st.liveText && atBottom) body.scrollTop = body.scrollHeight; else body.scrollTop = scroll;
@@ -377,7 +384,7 @@ const UI = (() => {
         break;
       case 'storyboard': {
         const panels = list(d.panels);
-        add(wrapEl, h('div', { class: 'board-tools' }, sketchBtn('storyboard'), h('button', { class: 'btn small ghost', onclick: () => { previewMode = 'animatic'; renderPreview(); } }, '▶ Play animatic')),
+        add(wrapEl, h('div', { class: 'board-tools' }, sketchBtn('storyboard'), h('button', { class: 'btn small ghost', onclick: () => { screenTab = 'previz'; renderScreening(); } }, '🎬 Previz video')),
           h('div', { class: 'sb-grid ar-' + p.settings.aspect.replace(/[:.]/g, '-') }, ...panels.map((x) => h('figure', { class: 'sb-panel' }, sketchOf('storyboard', x.id) || placeholderPanel(x.shot, x.moment), h('figcaption', {}, h('b', {}, x.shot), ` ${x.moment || ''}`, x.camera_note ? h('i', {}, ` · ${x.camera_note}`) : null, x.dialogue ? h('q', {}, x.dialogue) : null)))));
         break;
       }
@@ -441,50 +448,143 @@ const UI = (() => {
     const ms = ((p.stages.master.data && p.stages.master.data.shots) || []).find((x) => x.id === shot) || ((p.stages.direction.data && p.stages.direction.data.shots) || []).find((x) => x.id === shot) || {};
     return h('div', { class: 'ph-panel', style: `--a:${a};--b:${b}` }, h('span', { class: 'ph-size' }, ms.size || 'SHOT'), h('span', { class: 'ph-txt' }, truncate(moment || ms.action || '', 90)));
   }
+
+  // ----- pictures: code-made images, and real images with your keys -----
+  function keyedProviders(kind) {
+    const k = Keys.get(P() && P().id);
+    return ['fal', 'openai', 'google'].filter((x) => k[x] && k[x].key && (kind !== 'video' || k[x].videoModel !== '-'));
+  }
   function promptCard(stage, x) {
     const p = P();
     const out = h('div', { class: 'gen-out' });
+    const provs = keyedProviders(stage === 'video' ? 'video' : 'image');
     const card = h('div', { class: 'card wide prompt' }, h('div', { class: 'prompt-head' }, h('span', { class: 'tag' }, x.id), h('b', {}, ` ${x.kind || x.mode || ''}`), h('small', { class: 'muted' }, ` ${x.target || x.shot || ''} ${x.clip_length_s ? '· ' + x.clip_length_s + ' s' : ''}`)),
-      h('pre', { class: 'prompt-text' }, x.prompt || ''), h('div', { class: 'prompt-actions' }, h('button', { class: 'btn small ghost', onclick: () => copyText(x.prompt || '') }, '📋 Copy'),
-        stage === 'images' ? h('button', { class: 'btn small', onclick: () => sketchPrompt(x, out) }, '✏️ Sketch it') : null,
-        stage === 'images' && p.settings.imageMode === 'connector' ? h('button', { class: 'btn small primary', onclick: (e) => generateReal(x, out, e.target) }, '🖼️ Generate (Higgsfield)') : null), out);
-    const saved = (p.generated || {})[x.id];
-    if (saved) showGenerated(out, saved);
+      h('pre', { class: 'prompt-text' }, x.prompt || ''),
+      h('div', { class: 'prompt-actions' }, h('button', { class: 'btn small ghost', onclick: () => copyText(x.prompt || '') }, '📋 Copy'),
+        stage === 'images' ? h('button', { class: 'btn small', onclick: (e) => makeCodeImage(x, out, e.target) }, '🎨 Code image') : null,
+        ...provs.map((pv) => h('button', { class: 'btn small primary', onclick: (e) => genWithKey(stage, pv, x, out, e.target) }, `${stage === 'video' ? '🎬' : '🖼️'} ${PROVIDERS[pv].label}`)),
+        !provs.length ? h('button', { class: 'btn small ghost', title: 'Add an API key to generate real pictures and video', onclick: () => goPage('keys') }, '🔑 Add a key to generate') : null),
+      out);
+    if (generated[x.id]) showGenerated(out, generated[x.id]);
+    void p;
     return card;
   }
-  async function sketchPrompt(x, out) {
-    const sample = await Engine.getSample();
-    if (!sample) { toast('Claude is not available in this view.'); return; }
-    fill(out, h('p', { class: 'muted' }, '✏️ Pixel Prompt is sketching…'));
-    Studio.setState('image-prompt-engineer', 'draw');
-    try {
-      const { text } = await sample(`Draw a quick concept sketch as one SVG (viewBox "0 0 320 ${P().settings.aspect === '9:16' ? 568 : 180}", simple line art with flat fills, basic shapes only, no images or scripts, under 3 KB) for this image prompt. Reply with only one fenced \`\`\`svg block.\n\n${x.prompt}`, { cache: false, modelTier: P().settings.tier });
-      const svgClean = sanitizeSvg(text);
-      fill(out, svgClean ? h('div', { class: 'sketch', html: svgClean }) : h('p', { class: 'muted' }, 'No sketch came back. Try again.'));
-    } catch (e) { fill(out, h('p', { class: 'muted' }, Engine.errCopy(e))); }
-    finally { Studio.setState('image-prompt-engineer', 'idle'); }
-  }
-  async function generateReal(x, out, btn) {
+  async function makeCodeImage(x, out, btn) {
     btn.disabled = true;
-    fill(out, h('p', { class: 'muted' }, '🖼️ Calling Higgsfield… (uses your Higgsfield credits)'));
-    Studio.setState('image-prompt-engineer', 'write');
+    fill(out, h('p', { class: 'muted' }, '🎨 Pixel Prompt is building the picture with code…'));
     try {
-      const res = await Engine.connectorImage(x.prompt, x.aspect || P().settings.aspect, (msg) => fill(out, h('p', { class: 'muted' }, msg)));
-      const p = P();
-      p.generated = p.generated || {};
-      p.generated[x.id] = res;
-      showGenerated(out, res);
-      Engine.chat('image-prompt-engineer', `Generated ${x.id} on Higgsfield: ${res.status || 'done'}. ${res.note || ''}`, { team: true });
-    } catch (e) {
-      const code = e && e.code;
-      const msg = code === 'no_mcp' ? 'Connectors aren\'t available in this view. Open the studio in claude.ai with the Higgsfield connector connected.' : code === 'tools_unavailable' ? 'This view can\'t run connector tools.' : Engine.errCopy(e);
-      fill(out, h('p', { class: 'muted' }, '⚠️ ' + msg));
-    } finally { btn.disabled = false; Studio.setState('image-prompt-engineer', 'idle'); }
+      const r = await Engine.codeImage(x.prompt || '', x.aspect || P().settings.aspect);
+      generated[x.id] = { kind: 'image', url: r.url, blob: r.blob, by: 'Claude (code)' };
+      showGenerated(out, generated[x.id]);
+    } catch (e) { fill(out, h('p', { class: 'muted' }, '⚠️ ' + Engine.errCopy(e))); }
+    finally { btn.disabled = false; }
   }
-  function showGenerated(out, res) {
-    const urls = (res && Array.isArray(res.urls) ? res.urls : []).filter((u) => /^https:\/\//.test(u));
-    fill(out, h('p', { class: 'muted' }, `Status: ${res.status || '?'}${res.job_id ? ' · job ' + res.job_id : ''}. ${res.note || ''}`),
-      ...urls.map((u) => { const img = h('img', { src: u, alt: 'Generated image', class: 'gen-img', referrerpolicy: 'no-referrer' }); img.onerror = () => img.replaceWith(h('p', { class: 'muted small' }, 'The image is in your Higgsfield library (this page can\'t display it): ', h('code', {}, u))); return img; }));
+  async function genWithKey(stage, provider, x, out, btn) {
+    const k = Keys.key(P().id, provider);
+    btn.disabled = true;
+    const robot = stage === 'video' ? 'video-prompt-engineer' : 'image-prompt-engineer';
+    W.setState(robot, 'write');
+    fill(out, h('p', { class: 'muted' }, `Calling ${PROVIDERS[provider].label}… (uses your credits there)`));
+    try {
+      const res = stage === 'video'
+        ? await Gen.video(provider, k, x.prompt || '', P().settings.aspect, +x.clip_length_s || 5, (m) => fill(out, h('p', { class: 'muted' }, m)))
+        : await Gen.image(provider, k, x.prompt || '', x.aspect || P().settings.aspect);
+      if (!res.url) throw { code: 'provider_error', message: 'The provider answered without a file.' };
+      generated[x.id] = { kind: stage === 'video' ? 'video' : 'image', url: res.url, blob: res.blob, by: PROVIDERS[provider].label };
+      showGenerated(out, generated[x.id]);
+      Engine.chat(robot, `${x.id} generated with ${PROVIDERS[provider].label}. 🎉`, { team: true });
+    } catch (e) { fill(out, h('p', { class: 'muted' }, `⚠️ ${e.message || Engine.errCopy(e)}`), e.code === 'network_blocked' && hasHomeCopy() ? h('button', { class: 'btn small', onclick: takeHome }, '📥 Take the studio home') : null); }
+    finally { btn.disabled = false; W.setState(robot, 'idle'); }
+  }
+  function showGenerated(out, g) {
+    const media = g.kind === 'video' ? h('video', { src: g.url, controls: true, playsinline: true, class: 'gen-img' }) : h('img', { src: g.url, alt: 'Generated picture', class: 'gen-img' });
+    const ext = g.kind === 'video' ? (g.blob && /mp4/.test(g.blob.type) ? 'mp4' : 'mp4') : 'png';
+    fill(out, media, h('div', { class: 'row' }, h('small', { class: 'muted' }, `by ${g.by}`), g.blob ? h('button', { class: 'btn small ghost', onclick: () => save(`${slug()}-${Date.now()}.${g.kind === 'video' ? ext : 'png'}`, g.blob) }, '💾 Save') : null));
+  }
+  async function renderPictures(body) {
+    const p = P();
+    if (!p) { fill(body, emptyState('🖼', 'No film yet', 'Pictures appear here as the crew works.')); return; }
+    const sk = [...(p.stages.characters.sketches || []), ...(p.stages.world.sketches || [])];
+    const sbs = p.stages.storyboard.sketches || [];
+    const specs = (p.stages.render.data && p.stages.render.data.shots) || [];
+    const frames = h('div', { class: 'sb-grid ar-' + p.settings.aspect.replace(/[:.]/g, '-') });
+    const imgPrompts = ((p.stages.images.data || {}).prompts) || [];
+    fill(body,
+      h('div', { class: 'pics-head' }, h('h3', {}, '🖼 Pictures'), h('p', { class: 'muted' }, 'Made by the robots with code (sketches and 3D frames), or by your image tools with your own API keys.')),
+      sk.length ? h('div', {}, h('h4', {}, '✏️ Concept sketches'), h('div', { class: 'cards' }, ...sk.map((x) => h('figure', { class: 'card' }, h('div', { class: 'sketch', html: x.svg }), h('figcaption', {}, h('b', {}, x.title), ` ${x.id}`))))) : null,
+      specs.length ? h('div', {}, h('h4', {}, '🎥 3D keyframes from the previz'), frames) : null,
+      sbs.length ? h('div', {}, h('h4', {}, '🖼️ Storyboard panels'), h('div', { class: 'sb-grid' }, ...sbs.map((x) => h('figure', { class: 'sb-panel' }, h('div', { class: 'sketch', html: x.svg }), h('figcaption', {}, x.id))))) : null,
+      imgPrompts.length ? h('div', {}, h('h4', {}, '🪄 Image prompts'), ...imgPrompts.map((x) => promptCard('images', x))) : null,
+      !sk.length && !specs.length && !sbs.length && !imgPrompts.length ? emptyState('🖼', 'No pictures yet', 'Concept sketches arrive with the character and location designs; 3D keyframes with the previz.') : null);
+    for (const sp of specs.slice(0, 24)) {
+      const fig = h('figure', { class: 'sb-panel' }, h('div', { class: 'ph-panel loading' }, '…'), h('figcaption', {}, h('b', {}, sp.shot || ''), sp.caption ? h('q', {}, sp.caption) : null));
+      frames.append(fig);
+    }
+    for (let i = 0; i < Math.min(24, specs.length); i++) {
+      if (screenTab !== 'pictures') return;
+      try {
+        const blob = await Previz.still(specs[i], p.settings.aspect, 0.15);
+        const url = URL.createObjectURL(blob);
+        const fig = frames.children[i];
+        if (fig) fig.firstChild.replaceWith(h('img', { src: url, alt: `Keyframe ${specs[i].shot}`, class: 'frame-img' }));
+      } catch (e) { break; }
+    }
+  }
+
+  // ----- previz video player -----
+  function stopPlayer() { if (player.ctl) player.ctl.abort(); player.ctl = null; }
+  function renderPreviz(body) {
+    const p = P();
+    if (!p) { fill(body, emptyState('🎬', 'No film yet', 'The previz video is built after the shot records.')); return; }
+    const specs = (p.stages.render.data && p.stages.render.data.shots) || [];
+    const vids = ((p.stages.video.data || {}).prompts) || [];
+    if (!specs.length) {
+      const st = p.stages.render.status;
+      fill(body, emptyState('📽️', 'No previz yet', p.settings.imageMode === 'prompts' ? 'Pictures by code are off for this film. Turn them on in ⚙️ Settings and redo the “Previz video” stage.' : st === 'working' ? 'Greenscreen Gary is building the scenes right now…' : 'Greenscreen Gary builds it after the shot records are compiled.'),
+        animaticItems().length ? h('div', {}, h('h4', {}, 'Meanwhile: storyboard animatic'), h('div', { id: 'animHost' })) : null,
+        vids.length ? h('div', {}, h('h4', {}, '🎬 Video prompts (generate with your keys)'), ...vids.map((x) => promptCard('video', x))) : null);
+      const host = $('#animHost');
+      if (host) renderAnimatic(host);
+      return;
+    }
+    const stageBox = h('div', { class: 'player-stage' });
+    const status = h('div', { class: 'player-status' }, `${specs.length} shots · ${specs.reduce((a, x) => a + (+x.duration_s || 4), 0).toFixed(0)} s`);
+    const strip = h('div', { class: 'shot-strip' }, ...specs.map((sp, i) => h('button', { class: 'shot-chip', title: sp.caption || '', onclick: () => playFrom(i) }, sp.shot || `#${i + 1}`)));
+    const playBtn = h('button', { class: 'btn primary' }, '▶ Play');
+    const recBtn = h('button', { class: 'btn' }, '⏺ Export video (.webm)');
+    const musicT = h('label', { class: 'toggle' }, h('input', { type: 'checkbox', checked: player.music ? true : null, onchange: (e) => { player.music = e.target.checked; } }), ' 🎵 Music bed');
+    const redoNote = h('input', { type: 'text', placeholder: 'Change for one shot, e.g. "lower camera, more rain"' });
+    const redoSel = h('select', {}, ...specs.map((sp) => h('option', { value: sp.shot }, sp.shot)));
+    const redoBtn = h('button', { class: 'btn small', onclick: async () => {
+      redoBtn.disabled = true; status.textContent = `🔁 Greenscreen Gary is rebuilding ${redoSel.value}…`;
+      try { await Engine.rerenderShot(redoSel.value, redoNote.value.trim()); status.textContent = 'Rebuilt!'; renderPreviz(body); } catch (e) { status.textContent = '⚠️ ' + Engine.errCopy(e); redoBtn.disabled = false; }
+    } }, '🔁 Rebuild shot');
+    const playFrom = async (start, record) => {
+      stopPlayer();
+      player.ctl = new AbortController();
+      const ctl = player.ctl;
+      await Previz.ensure(p.settings.aspect);
+      stageBox.replaceChildren(Previz.canvas());
+      playBtn.textContent = '⏹ Stop';
+      try {
+        const blob = await Previz.play(specs.slice(start || 0), {
+          aspect: p.settings.aspect, signal: ctl.signal, record: !!record, music: player.music, mood: `${p.settings.genre} ${p.settings.tone || ''}`,
+          titleCard: record || !start ? p.title : null, badges: !record,
+          onShot: (i) => { $$('.shot-chip', strip).forEach((c, k) => c.classList.toggle('on', k === i + (start || 0))); status.textContent = `▶ ${specs[i + (start || 0)].shot}${specs[i + (start || 0)].caption ? ' — ' + specs[i + (start || 0)].caption : ''}`; },
+        });
+        if (blob && !ctl.signal.aborted) { status.textContent = `🎉 Video ready (${(blob.size / 1e6).toFixed(1)} MB).`; await save(`${slug()}-previz.webm`, blob); }
+        else if (!ctl.signal.aborted) status.textContent = '✅ Done. Play again or export it.';
+      } catch (e) { status.textContent = '⚠️ ' + (e.message || e.code || 'Playback failed'); }
+      finally { playBtn.textContent = '▶ Play'; if (player.ctl === ctl) player.ctl = null; }
+    };
+    playBtn.onclick = () => { if (player.ctl) { stopPlayer(); return; } playFrom(0); };
+    recBtn.onclick = () => { if (player.ctl) stopPlayer(); toast('Recording in real time: let it play to the end. ⏺'); playFrom(0, true); };
+    fill(body,
+      h('div', { class: 'player' }, stageBox, status, h('div', { class: 'player-controls' }, playBtn, recBtn, musicT), strip,
+        h('div', { class: 'redo-row' }, redoSel, redoNote, redoBtn),
+        h('p', { class: 'fineprint' }, 'This previz is made entirely by Claude with code: Greenscreen Gary writes a 3D scene for every shot and the studio renders it with three.js. Export records it in real time to a .webm file. For final-quality video, use the video prompts below with your own keys.')),
+      vids.length ? h('div', {}, h('h4', {}, '🎬 Video prompts (generate with your keys)'), ...vids.map((x) => promptCard('video', x))) : null);
+    Previz.ensure(p.settings.aspect).then(() => Previz.still(specs[0], p.settings.aspect, 0.1)).then((b) => { if (!player.ctl && stageBox.isConnected && !stageBox.firstChild) stageBox.append(h('img', { src: URL.createObjectURL(b), class: 'frame-img', alt: 'First frame' })); }).catch(() => {});
   }
   function speak(text, who) {
     try {
@@ -495,8 +595,6 @@ const UI = (() => {
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) { /* ignore */ }
   }
-
-  // ----- animatic -----
   function animaticItems() {
     const p = P();
     const panels = (p.stages.storyboard.data && p.stages.storyboard.data.panels) || [];
@@ -547,8 +645,6 @@ const UI = (() => {
     fill(body, stageEl, bar, cap, controls);
     draw();
   }
-
-  // ----- master document -----
   function assembleMaster() {
     const p = P();
     const out = [`# MASTER PRODUCTION DOCUMENT — ${p.title}`, '', `Made in Robo Film Studio · ${new Date().toISOString().slice(0, 10)} · ${p.settings.runtime} s · ${p.settings.aspect} · ${p.settings.medium} · ${p.settings.genre}`, '', `Pitch: ${p.settings.idea}`, '', '## Status dashboard', '', '| Stage | Robot (skill) | Version | Status | Words |', '|---|---|---|---|---|'];
@@ -579,8 +675,6 @@ const UI = (() => {
     }
     return out.slice(0, 120);
   }
-
-  // ----- pipeline tab, tracker, header -----
   function renderPipeline() {
     const p = P();
     const rc = $('#runControls');
@@ -613,7 +707,7 @@ const UI = (() => {
     if (!p) { fill(tr, h('span', { class: 'muted' }, 'The production line appears here: one stop per robot.')); return; }
     fill(tr, ...STAGES.filter((x) => Engine.enabled(x.id)).map((x, i, arr) => {
       const st = p.stages[x.id];
-      return h('button', { class: `trk s-${st.status}`, title: `${x.title} — ${ROBOTS[x.robot].name}: ${st.status}`, onclick: () => (st.md || st.liveText ? showPreview(x.id) : Studio.focusRoom(ROOM_OF[x.robot] || 'office')) },
+      return h('button', { class: `trk s-${st.status}`, title: `${x.title} — ${ROBOTS[x.robot].name}: ${st.status}`, onclick: () => (st.md || st.liveText ? showPreview(x.id) : visitRoom(x.robot)) },
         h('span', { class: 'trk-ico' }, x.icon), h('span', { class: 'trk-t' }, x.title), i < arr.length - 1 ? h('span', { class: 'trk-line' }) : null);
     }));
     const act = tr.querySelector('.s-working, .s-review');
@@ -621,71 +715,146 @@ const UI = (() => {
   }
   function renderHeader() {
     const p = P();
-    $('#projectTitle').textContent = p ? p.title : 'No project yet';
+    $('#projectTitle').textContent = p ? p.title : 'No film yet';
     $('#btnExport').disabled = !p;
     $('#btnSettings').disabled = !p;
     $('#progressPill').hidden = !p;
+    $('#cabinBadge').hidden = !unread;
+    $('#cabinBadge').textContent = unread;
     if (!p) return;
     const pr = Store.progressOf(p);
     const cur = Engine.current();
     const ring = $('#ringFg');
-    const C = 2 * Math.PI * 15;
-    ring.style.strokeDasharray = `${C}`;
-    ring.style.strokeDashoffset = `${C * (1 - (pr.total ? pr.done / pr.total : 0))}`;
+    const Cc = 2 * Math.PI * 15;
+    ring.style.strokeDasharray = `${Cc}`;
+    ring.style.strokeDashoffset = `${Cc * (1 - (pr.total ? pr.done / pr.total : 0))}`;
     const order = STAGES.filter((x) => Engine.enabled(x.id));
     const idx = cur ? order.findIndex((x) => x.id === cur) + 1 : pr.done;
     $('#progressStage').textContent = cur ? `${STAGE[cur].icon} ${STAGE[cur].title}` : p.review ? `👀 Review: ${STAGE[p.review].title}` : Engine.isRunning() ? 'Walking…' : pr.done === pr.total ? '🎉 Wrapped' : '⏸ Paused';
     $('#progressCount').textContent = `Stage ${Math.max(1, idx)} of ${pr.total} · ${pr.done} done`;
     $('#onAir').classList.toggle('lit', Engine.isRunning());
-    $('#hudStage').textContent = cur ? `${ROBOTS[STAGE[cur].robot].name} is working on ${STAGE[cur].title}` : p.review ? `Waiting for your review of ${STAGE[p.review].title}` : Engine.isRunning() ? 'Captain Clipboard is on the move…' : pr.done === pr.total ? 'That\'s a wrap! 🎉' : 'Line paused';
+    const hud = cur ? `${ROBOTS[STAGE[cur].robot].name} is working on ${STAGE[cur].title}` : p.review ? `Waiting for your review of ${STAGE[p.review].title}` : Engine.isRunning() ? 'Captain Clipboard is on the move…' : pr.done === pr.total ? 'That\'s a wrap! 🎉' : 'Line paused';
+    $$('.hud-stage').forEach((e2) => { e2.textContent = hud; });
     const n = allIssues().length;
     $('#btnIssues').hidden = !n;
     $('#issueCount').textContent = n;
-    const stages = STAGES.filter((x) => Engine.enabled(x.id)).map((x) => ({ id: x.id, status: p.stages[x.id].status }));
-    Studio.updateBoard(stages);
+    W.updateBoard(STAGES.filter((x) => Engine.enabled(x.id)).map((x) => ({ id: x.id, status: p.stages[x.id].status })));
   }
-  function renderAll() { renderHeader(); renderTracker(); renderPipeline(); renderReview(); if (activeTab === 'preview') renderPreview(); }
-  function switchTab(tab) {
-    activeTab = tab;
-    $$('.tab').forEach((b) => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-    for (const t of ['chat', 'preview', 'pipeline']) $('#tab-' + t).hidden = t !== tab;
-    if (tab === 'preview') renderPreview();
+  function renderLive() {
+    const box = $('#liveBox');
+    if (!box) return;
+    const p = P(); const cur = Engine.current();
+    if (!p || !cur) { box.hidden = true; return; }
+    const st = p.stages[cur];
+    box.hidden = false;
+    fill(box, h('div', { class: 'live-head' }, robotAvatar(STAGE[cur].robot, 28), h('b', {}, `${ROBOTS[STAGE[cur].robot].name} · ${STAGE[cur].title}`), h('button', { class: 'btn small ghost', onclick: () => showPreview(cur) }, '👁 Open')),
+      h('div', { class: 'live-text' }, st.liveText ? lastWords(stripJsonBlock(st.liveText), 60) + ' ▍' : 'Thinking… 💭'));
+  }
+  function renderAll() { renderHeader(); renderTracker(); if (page === 'board') renderPipeline(); renderReview(); renderLive(); if (page === 'screening' && ['docs', 'boards'].includes(screenTab)) renderPreview(); }
+
+  // ----- pages and the 3D stage -----
+  function goPage(pg) {
+    page = pg;
+    $$('.nav-btn').forEach((b) => { const on = b.dataset.page === pg; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $$('.page').forEach((s2) => { s2.hidden = s2.id !== 'page-' + pg; });
+    const stage = $('#stage3d');
+    if (pg === 'cabin') { $('#slotCabin').append(stage); W.setMode('seat'); unread = 0; const log = $('#chatLog'); log.scrollTop = log.scrollHeight; }
+    if (pg === 'studio') { $('#slotStudio').append(stage); setStudioCam(studioCam); }
+    if (pg !== 'screening') stopPlayer();
+    if (pg === 'lobby') renderLobby();
+    if (pg === 'screening') renderScreening();
+    if (pg === 'board') renderPipeline();
+    if (pg === 'keys') renderKeys();
+    renderHeader();
+  }
+  function setStudioCam(m, arg) {
+    studioCam = m;
+    if (m === 'room') { W.setMode('room', arg || roomSel()); }
+    else { W.setMode(m); W.setFollow(m === 'director'); }
+    $$('.cam-btn').forEach((b) => b.classList.toggle('on', b.dataset.cam === m));
+    if (m !== 'room') { const s2 = $('#roomSelect'); if (s2) s2.value = ''; }
+  }
+  const roomSel = () => ($('#roomSelect') && $('#roomSelect').value) || COORD;
+  function visitRoom(rid) { goPage('studio'); const s2 = $('#roomSelect'); if (s2) s2.value = rid; setStudioCam('room', rid); }
+  function showRoomCard(info) {
+    const card = $('#roomCard');
+    const id = info.robot;
+    if (!id || !ROBOTS[id]) { card.hidden = true; return; }
+    const R = ROBOTS[id];
+    const p = P();
+    const stagesOf = STAGES.filter((x) => x.robot === id);
+    fill(card, h('button', { class: 'x', onclick: () => { card.hidden = true; }, title: 'Close' }, '×'),
+      h('div', { class: 'rc-head' }, robotAvatar(id, 56), h('div', {}, h('b', {}, R.name), h('small', {}, R.job), h('code', {}, `skill: ${id}`))),
+      h('p', { class: 'rc-desc' }, truncate(SKILLDATA.skills[id].description, 230)),
+      h('div', { class: 'rc-stages' }, ...stagesOf.map((x) => h('button', { class: 'chip-btn', onclick: () => { if (p && (p.stages[x.id].md || p.stages[x.id].liveText)) showPreview(x.id); else toast('Nothing written yet.'); } }, `${x.icon} ${x.title} ${p ? statusIcon(Engine.enabled(x.id) ? p.stages[x.id].status : 'skipped') : ''}`)),
+        page === 'studio' ? h('button', { class: 'chip-btn', onclick: () => { visitRoom(id); card.hidden = true; } }, '🎥 Watch this room') : null));
+    card.hidden = false;
   }
 
-  // ----- modals: projects, export, settings, issues, room card -----
-  async function openProjects() {
-    const box = h('div', { class: 'projects' }, h('h2', { id: 'modalTitle' }, '🗂 Your films'), h('p', { class: 'muted' }, 'Loading…'));
-    openModal(box);
-    const list = await Store.listProjects();
-    const where = { db: 'Saved to your account in this studio (private to you).', local: 'Saved in this browser only.', memory: 'Saving isn\'t available in this view; films last until you close the page.' }[Store.mode()];
-    fill(box, h('h2', { id: 'modalTitle' }, '🗂 Your films'), h('p', { class: 'muted' }, where),
-      list.length ? h('ul', { class: 'proj-list' }, ...list.map((x) => {
-        const del = h('button', { class: 'btn small ghost', title: 'Delete', onclick: () => {
-          if (del.dataset.armed) { Store.deleteProject(x.id).then(openProjects); return; }
-          del.dataset.armed = '1'; del.textContent = 'Really delete?'; del.classList.add('danger');
-        } }, '🗑');
-        return h('li', {}, h('div', {}, h('b', {}, x.title), h('small', {}, `${x.progress ? x.progress.done + '/' + x.progress.total + ' stages' : ''} · ${x.updated ? new Date(x.updated).toLocaleString() : ''}`)),
-          h('div', { class: 'row' }, h('button', { class: 'btn small primary', onclick: () => openProject(x.id) }, 'Open'), del));
-      })) : h('p', {}, 'No saved films yet.'),
-      h('div', { class: 'wiz-nav' }, h('label', { class: 'btn ghost' }, '📥 Import project file', h('input', { type: 'file', accept: '.json', hidden: true, onchange: (e) => addFiles(e.target.files) })), h('button', { class: 'btn', onclick: closeModal }, 'Close')));
+  // ----- keys -----
+  function renderKeys() {
+    const el = $('#page-keys');
+    const p = P();
+    const keys = JSON.parse(JSON.stringify(Keys.get(p && p.id)));
+    const inClaude = Brain.mode() === 'claude';
+    const asDefault = h('input', { type: 'checkbox', checked: Keys.isDefault() || !p ? true : null });
+    const cards2 = Object.entries(PROVIDERS).map(([pid, pv]) => {
+      keys[pid] = keys[pid] || {};
+      const out = h('small', { class: 'muted' });
+      const keyIn = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Paste your API key', value: keys[pid].key || '', oninput: (e) => { keys[pid].key = e.target.value.trim(); } });
+      const show = h('button', { class: 'btn small ghost', type: 'button', onclick: () => { keyIn.type = keyIn.type === 'password' ? 'text' : 'password'; } }, '👁');
+      const fields = pv.fields.map(([f, label, def]) => field(label, h('input', { type: 'text', value: keys[pid][f] || def, oninput: (e) => { keys[pid][f] = e.target.value.trim(); } })));
+      for (const [f, , def] of pv.fields) if (!keys[pid][f]) keys[pid][f] = def;
+      return h('div', { class: 'card key-card' + (keys[pid].key ? ' has' : '') },
+        h('div', { class: 'key-head' }, h('b', {}, pv.label), keys[pid].key ? h('span', { class: 'tag' }, '✓ key set') : null),
+        h('p', { class: 'muted small' }, pv.hint, ' Get a key at ', h('code', {}, pv.link), '.'),
+        h('div', { class: 'key-row' }, keyIn, show,
+          h('button', { class: 'btn small', type: 'button', onclick: async () => { saveKeys(); out.textContent = 'Testing…'; try { out.textContent = '✅ ' + await Gen.test(pid, Keys.key(p && p.id, pid) || keys[pid]); } catch (e) { out.textContent = '⚠️ ' + (e.message || Engine.errCopy(e)); } } }, 'Test'),
+          keys[pid].key ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => { keys[pid].key = ''; saveKeys(); renderKeys(); } }, 'Remove') : null),
+        fields.length ? h('div', { class: 'grid2' }, ...fields) : null, out);
+    });
+    function saveKeys() { Keys.set(p && p.id, keys, asDefault.checked || !p); }
+    fill(el, h('div', { class: 'keys' },
+      h('h2', {}, '🔑 API keys'),
+      h('div', { class: 'card note ' + (inClaude ? 'warn' : 'ok') },
+        inClaude
+          ? [h('b', {}, 'You are inside claude.ai. '), 'Here the robots think with your Claude account, and Claude makes the pictures and the previz video with code: no keys needed. claude.ai does not let pages call outside services, so image/video keys only work when you run the studio on your own computer.', hasHomeCopy() ? h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: takeHome }, '📥 Take the studio home (.html)')) : null]
+          : [h('b', {}, 'Running on your computer. '), 'The robots use your Anthropic key; image and video buttons use the providers you add. Keys are stored only in this browser, never in exports.']),
+      ...cards2,
+      h('label', { class: 'toggle' }, asDefault, ' Use these keys for all my films (otherwise only for this film)'),
+      h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => { saveKeys(); toast('Keys saved in this browser 🔑'); renderKeys(); } }, '💾 Save keys')),
+      h('p', { class: 'fineprint' }, 'Keys stay in this browser\'s storage for this studio only. They are not saved to your account, not shown to the robots and not included in project files. Generation calls go straight from your browser to the provider and use your credits there. The provider calls follow each provider\'s public API but have not been tested from this page; if one fails, check the model name above against the provider\'s docs.')));
   }
+  function hasHomeCopy() { const e2 = document.getElementById('homeCopy'); return !!(e2 && e2.textContent.trim().length > 100); }
+  async function takeHome() {
+    try {
+      const b64 = document.getElementById('homeCopy').textContent.trim();
+      const bin = atob(b64); const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const html = await new Response(new Blob([arr]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      await save('robo-film-studio.html', html);
+      toast('Open the saved file in Chrome or Edge on your computer, then add your keys on 🔑 Keys.', 6000);
+    } catch (e) { toast('Could not prepare the file: ' + (e.message || e)); }
+  }
+
+  // ----- projects, export, settings, issues -----
   async function openProject(pid) {
     if (Engine.isRunning()) { toast('Pause the current film first.'); return; }
     const p = await Store.loadProject(pid);
     if (!p) { toast('Couldn\'t open that film.'); return; }
     loadIntoUi(p);
     closeModal();
+    goPage('cabin');
     toast(`Opened "${p.title}"`);
   }
   function loadIntoUi(p) {
     Engine.setProject(p);
-    Studio.setSpeed(SPEEDS[p.settings.speed] || 1);
+    W.setSpeed(SPEEDS[p.settings.speed] || 1);
     applyCrew();
     renderChat();
     previewSel = lastDone();
     previewFollow = true;
     renderAll();
-    if (p.review) renderReview();
   }
   function importProject(j) {
     const p = j.project;
@@ -701,15 +870,26 @@ const UI = (() => {
   }
   async function save(filename, data) {
     if (!downloads) downloads = await useCap('downloads');
-    if (!downloads) { await copyText(typeof data === 'string' ? data : ''); toast('Saving files isn\'t available here, so I copied it to your clipboard.'); return; }
-    try { await downloads.save({ filename, data }); toast('Saved 💾'); }
-    catch (e) { if (e && e.code !== 'declined') toast('Couldn\'t save: ' + (e.code || 'error')); }
+    if (downloads) {
+      try { await downloads.save({ filename, data }); toast('Saved 💾'); } catch (e) { if (e && e.code !== 'declined') toast('Couldn\'t save: ' + (e.code || 'error')); }
+      return;
+    }
+    if (!CL) {
+      const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+      const a = h('a', { href: url, download: filename });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      return;
+    }
+    if (typeof data === 'string') { await copyText(data); toast('Saving files isn\'t available here, so I copied it to your clipboard.'); }
+    else toast('Saving files isn\'t available in this view.');
   }
-  const slug = () => (P().title || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'film';
+  const slug = () => ((P() && P().title) || 'film').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'film';
   function openExport() {
     const p = P();
     const prompts = [...(((p.stages.images.data || {}).prompts) || []).map((x) => ['image', x.id, x.target || '', x.kind || '', x.prompt || '']), ...(((p.stages.video.data || {}).prompts) || []).map((x) => ['video', x.id, x.shot || '', x.mode || '', x.prompt || ''])];
     const csv = [['type', 'id', 'target', 'kind_or_mode', 'prompt'], ...prompts].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const specs = (p.stages.render.data && p.stages.render.data.shots) || [];
     const fountain = ((p.stages.screenplay.md || '').match(/```fountain\s*\n([\s\S]*?)```/) || [])[1];
     const item = (ico, title, sub, fn, disabled) => h('button', { class: 'export-item', disabled: disabled ? true : null, onclick: fn }, h('span', { class: 'ex-ico' }, ico), h('b', {}, title), h('small', {}, sub));
     openModal(h('div', {}, h('h2', { id: 'modalTitle' }, '📦 Export'), h('div', { class: 'export-grid' },
@@ -717,6 +897,7 @@ const UI = (() => {
       item('🖼️', 'Storyboard sheet', 'Printable HTML with the panels and sketches', () => save(`${slug()}-storyboard.html`, storyboardHtml()), !(p.stages.storyboard.data && p.stages.storyboard.data.panels)),
       item('🪄', 'Prompt pack', `${prompts.length} image and video prompts (.csv)`, () => save(`${slug()}-prompts.csv`, csv), !prompts.length),
       item('📝', 'Screenplay', 'Fountain text (.txt)', () => save(`${slug()}-screenplay.fountain.txt`, fountain || ''), !fountain),
+      item('🎬', 'Previz video', 'Claude-made 3D previz, recorded to .webm', () => { closeModal(); screenTab = 'previz'; goPage('screening'); toast('Press ⏺ Export video to record it.'); }, !specs.length),
       item('💾', 'Project file', 'Re-open or share it in Robo Film Studio (.json)', () => save(`${slug()}.robofilm.json`, JSON.stringify({ robo_film_studio_project: 1, project: { ...p, uploads: p.uploads.map(({ blob, ...u }) => u) } }))),
       item('📋', 'Copy master to clipboard', 'Paste it anywhere', () => copyText(assembleMaster()))),
     h('div', { class: 'wiz-nav' }, h('span'), h('button', { class: 'btn', onclick: closeModal }, 'Close'))));
@@ -748,7 +929,7 @@ const UI = (() => {
       h('p', { class: 'fineprint' }, 'Crew changes: use ⏭ / ＋ on each row of the Pipeline tab. Format changes (runtime, medium…) are creative changes: tell Captain Clipboard in the chat so the crew updates the work.'),
       h('div', { class: 'wiz-nav' }, h('button', { class: 'btn ghost', onclick: closeModal }, 'Cancel'), h('button', { class: 'btn primary', onclick: () => {
         Object.assign(p.settings, { mode: draft.mode, gates: draft.gates, tier: draft.tier, depth: draft.depth, speed: draft.speed, imageModel: draft.imageModel, videoModel: draft.videoModel, imageMode: draft.imageMode, chatter: draft.chatter });
-        Studio.setSpeed(SPEEDS[p.settings.speed] || 1);
+        W.setSpeed(SPEEDS[p.settings.speed] || 1);
         Store.saveProject(p, []);
         closeModal(); renderAll(); toast('Settings saved ⚙️');
       } }, 'Save')));
@@ -760,25 +941,6 @@ const UI = (() => {
       h('ul', { class: 'issue-list' }, ...list.map((x) => h('li', {}, h('span', { class: 'marker m-' + x.kind }, x.kind), ` ${x.text} `, h('small', { class: 'muted' }, `(${STAGE[x.stage].title})`),
         h('button', { class: 'btn small ghost', onclick: () => { closeModal(); const ta = $('#cmdInput'); ta.value = `About "${x.text.slice(0, 90)}" (${STAGE[x.stage].title}): `; ta.focus(); autosize(); } }, 'Answer')))),
       h('div', { class: 'wiz-nav' }, h('span'), h('button', { class: 'btn', onclick: closeModal }, 'Close'))));
-  }
-  function showRoomCard(info) {
-    const card = $('#roomCard');
-    const id = info.robot || (ROOMS.find((r) => r.id === info.room) || {}).workers && ROOMS.find((r) => r.id === info.room).workers[0];
-    if (info.room && !info.robot) {
-      const room = ROOMS.find((r) => r.id === info.room);
-      Studio.setFollow(false);
-      Studio.focusRoom(room.id);
-      if (!room.workers.length) { card.hidden = true; return; }
-    }
-    if (!id) { card.hidden = true; return; }
-    const R = ROBOTS[id];
-    const p = P();
-    const stagesOf = STAGES.filter((x) => x.robot === id);
-    fill(card, h('button', { class: 'x', onclick: () => { card.hidden = true; }, title: 'Close' }, '×'),
-      h('div', { class: 'rc-head' }, robotAvatar(id, 56), h('div', {}, h('b', {}, R.name), h('small', {}, R.job), h('code', {}, `skill: ${id}`))),
-      h('p', { class: 'rc-desc' }, truncate(SKILLDATA.skills[id].description, 230)),
-      h('div', { class: 'rc-stages' }, ...stagesOf.map((x) => h('button', { class: 'chip-btn', onclick: () => { if (p && (p.stages[x.id].md || p.stages[x.id].liveText)) showPreview(x.id); else toast('Nothing written yet.'); } }, `${x.icon} ${x.title} ${p ? statusIcon(Engine.enabled(x.id) ? p.stages[x.id].status : 'skipped') : ''}`))));
-    card.hidden = false;
   }
 
   // ----- wiring -----
@@ -794,38 +956,40 @@ const UI = (() => {
     window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove('dragging'); });
     window.addEventListener('dragover', (e) => e.preventDefault());
     window.addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); addFiles(e.dataTransfer.files); });
-    $$('.tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-    $$('#previewMode .seg-btn').forEach((b) => b.addEventListener('click', () => { previewMode = b.dataset.mode; if (animatic) { animatic.playing = false; clearTimeout(animatic.timer); } renderPreview(); }));
-    $('#previewSelect').addEventListener('change', (e) => { if (e.target.value === '__follow') { previewFollow = true; } else { previewFollow = false; previewSel = e.target.value; } renderPreview(); });
-    $('#previewBody').addEventListener('click', (e) => { const b = e.target.closest('[data-copy]'); if (b) copyText(b.closest('.codeblock').querySelector('code').textContent); });
+    $$('.nav-btn').forEach((b) => b.addEventListener('click', () => goPage(b.dataset.page)));
+    $('#previewBodyClick') && null;
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-copy]'); if (b) copyText(b.closest('.codeblock').querySelector('code').textContent); });
     $('#chkChatter').addEventListener('change', (e) => document.body.classList.toggle('hide-team', !e.target.checked));
-    $('#btnNew').addEventListener('click', () => { if (Engine.isRunning()) { toast('Pause the current film first (Pipeline tab).'); return; } openWizard($('#cmdInput').value.trim()); });
-    $('#btnProjects').addEventListener('click', openProjects);
+    $('#btnNew').addEventListener('click', () => { if (Engine.isRunning()) { toast('Pause the current film first (🧭 Board).'); return; } draft = defaults(); goPage('lobby'); });
     $('#btnExport').addEventListener('click', openExport);
     $('#btnSettings').addEventListener('click', openSettings);
     $('#btnIssues').addEventListener('click', openIssues);
     $('#projectTitle').addEventListener('click', () => {
       const p = P();
-      if (!p) { openWizard(''); return; }
+      if (!p) { goPage('lobby'); return; }
       const inp = h('input', { type: 'text', value: p.title, maxlength: 80 });
       openModal(h('div', {}, h('h2', { id: 'modalTitle' }, 'Rename film'), inp, h('div', { class: 'wiz-nav' }, h('button', { class: 'btn ghost', onclick: closeModal }, 'Cancel'), h('button', { class: 'btn primary', onclick: () => { p.title = inp.value.trim() || p.title; Store.saveProject(p, []); closeModal(); renderHeader(); } }, 'Save'))));
     });
     $('#modalBack').addEventListener('click', (e) => { if (e.target.id === 'modalBack') closeModal(); });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modalBack').hidden) closeModal(); });
-    $('#btnFollow').addEventListener('click', () => { const on = !Studio.isFollowing(); Studio.setFollow(on); if (on) { const c = Engine.current(); Studio.focusRoom(c ? ROOM_OF[STAGE[c].robot] || 'office' : 'office'); } });
-    $('#btnOverview').addEventListener('click', () => { Studio.setFollow(false); Studio.overview(); });
-    $('#btnZoomIn').addEventListener('click', () => Studio.zoom(0.8));
-    $('#btnZoomOut').addEventListener('click', () => Studio.zoom(1.25));
-    Studio.onClick(showRoomCard);
+    $$('.cam-btn').forEach((b) => b.addEventListener('click', () => { if (b.dataset.cam === 'seat') { goPage('cabin'); return; } setStudioCam(b.dataset.cam); }));
+    const rs = $('#roomSelect');
+    fill(rs, h('option', { value: '' }, '🚪 Visit a room…'), h('option', { value: COORD }, '📋 Captain Clipboard\'s cabin'), ...WORKERS.map((rid) => h('option', { value: rid }, `${ROBOTS[rid].emoji} ${ROBOTS[rid].name} — ${ROBOTS[rid].job}`)));
+    rs.addEventListener('change', () => { if (rs.value) setStudioCam('room', rs.value); });
+    $('#btnZoomIn').addEventListener('click', () => { if (studioCam !== 'top') setStudioCam('top'); W.zoom(0.8); });
+    $('#btnZoomOut').addEventListener('click', () => { if (studioCam !== 'top') setStudioCam('top'); W.zoom(1.25); });
+    W.onClick(showRoomCard);
 
-    Engine.on('chat', (m) => renderChatMsg(m));
+    Engine.on('chat', (m) => { renderChatMsg(m); if (page !== 'cabin' && !m.team && m.from !== 'user') { unread++; renderHeader(); if (m.from === COORD) toast(`📋 ${String(m.text).slice(0, 140)}`, 4200); } });
     Engine.on('change', () => { renderAll(); applyCrew(); });
     Engine.on('title', renderHeader);
-    Engine.on('review', () => { renderReview(); if (P() && P().review) switchTab('chat'); });
-    Engine.on('stream', (id) => { if (activeTab === 'preview' && (previewFollow || previewSel === id)) queuePreview(); });
-    welcome();
+    Engine.on('review', () => { renderReview(); if (P() && P().review && (page === 'studio' || page === 'cabin')) goPage('cabin'); });
+    Engine.on('stream', (id) => { renderLive(); if (page === 'screening' && (previewFollow || previewSel === id)) queuePreview(); });
+    Engine.on('needbrain', () => goPage('keys'));
+    renderChat();
     renderAll();
     renderAttachments();
+    goPage(Brain.mode() === 'api' && !Brain.ready() ? 'keys' : 'lobby');
   }
-  return { init, toast, switchTab, renderAll };
+  return { init, toast, renderAll, goPage };
 })();

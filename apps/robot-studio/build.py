@@ -6,6 +6,8 @@ contracts) into one self-contained HTML page, so every robot in the studio runs 
 
 Usage: python apps/robot-studio/build.py [output.html]
 """
+import base64
+import gzip
 import json
 import re
 import sys
@@ -16,7 +18,7 @@ REPO = HERE.parents[1]
 SKILLS = REPO / "plugins" / "film-crew" / "skills"
 SHARED = REPO / "shared"
 SRC = HERE / "src"
-JS_ORDER = ["md.js", "data.js", "robots.js", "studio.js", "store.js", "engine.js", "ui.js", "main.js"]
+JS_ORDER = ["md.js", "data.js", "robots.js", "studio.js", "store.js", "brain.js", "world.js", "previz.js", "engine.js", "ui.js", "main.js"]
 
 
 def strip_frontmatter(text):
@@ -61,6 +63,17 @@ def main():
     page = page.replace("/*__CSS__*/", (SRC / "styles.css").read_text(encoding="utf-8"))
     page = page.replace("__SKILL_DATA__", blob)
     page = page.replace("/*__JS__*/", "(function(){\n'use strict';\n" + js + "\n})();")
+    # the "take the studio home" copy: the same page as a standalone file (without a copy of itself)
+    home = (
+        '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n</head>\n<body>\n'
+        + page.replace("__HOME_COPY__", "")
+        + "\n</body>\n</html>\n"
+    )
+    standalone = target.with_name(target.stem + "-standalone.html")
+    standalone.write_text(home, encoding="utf-8")
+    packed = base64.b64encode(gzip.compress(home.encode("utf-8"), 9)).decode("ascii")
+    page = page.replace("__HOME_COPY__", packed)
     target.write_text(page, encoding="utf-8")
     print(f"wrote {target} ({target.stat().st_size // 1024} KB, {len(data['skills'])} skills)")
 

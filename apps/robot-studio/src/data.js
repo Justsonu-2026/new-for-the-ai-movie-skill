@@ -64,6 +64,7 @@ const STAGES = [
   { id: 'vfx', robot: 'vfx-supervisor', title: 'VFX plan', icon: '✨', needs: ['brief', 'style', 'master'], gate: false, files: ['references/vfx-methods.md', 'templates/vfx-template.md'], shared: [] },
   { id: 'images', robot: 'image-prompt-engineer', title: 'Image prompts', icon: '🪄', needs: ['brief', 'characters', 'world', 'style', 'master'], gate: false, files: ['references/image-prompting.md', 'templates/images-template.md'], shared: ['ai-model-adapters.md'] },
   { id: 'video', robot: 'video-prompt-engineer', title: 'Video prompts', icon: '▶️', needs: ['brief', 'master', 'images', 'voice', 'sound'], gate: false, files: ['references/video-prompting.md', 'templates/video-template.md'], shared: ['ai-model-adapters.md'] },
+  { id: 'render', robot: 'vfx-supervisor', title: 'Previz video (code)', icon: '📽️', needs: ['brief', 'characters', 'world', 'style', 'master'], gate: false, files: [], shared: [] },
   { id: 'qc', robot: 'quality-control', title: 'QC preflight', icon: '🔍', needs: ['brief', 'screenplay', 'characters', 'style', 'master', 'images', 'video'], gate: false, files: ['references/qc-rubrics.md', 'templates/qc-report-template.md'], shared: ['ai-model-adapters.md'] },
   { id: 'wrap', robot: 'production-manager', title: 'Wrap & master document', icon: '🏁', needs: ['brief', 'qc'], gate: true, files: ['templates/master-production-document.md'], shared: [] },
 ];
@@ -95,8 +96,7 @@ const MODES = {
 };
 const IMAGE_MODES = {
   prompts: { label: '📝 Prompts only', hint: 'Robots write ready-to-paste prompts for your image and video tools. Nothing extra is spent.' },
-  sketch: { label: '✏️ Code sketches', hint: 'Claude draws rough SVG sketches: character sketches, location sketches and storyboard panels. Uses more Claude usage.' },
-  connector: { label: '🖼️ Real images (beta)', hint: 'Sketches plus real images from your Higgsfield connector on demand. Spends Higgsfield credits; needs the connector connected in claude.ai.' },
+  sketch: { label: '🎨 Claude makes pictures & video', hint: 'Claude draws concept sketches and storyboard panels, then builds a 3D previz video of every shot with code. Uses more Claude usage.' },
 };
 const TIERS = { quick: '⚡ Fast', default: '⚖️ Balanced', complex: '🧠 Best' };
 const DEPTHS = {
@@ -105,6 +105,9 @@ const DEPTHS = {
   detailed: { label: 'Detailed', hint: 'Full production depth, slower.', words: 'Write at full production depth as the skill requires (up to about 3500 words before the JSON block).' },
 };
 const SPEEDS = { chill: 0.6, normal: 1, turbo: 2 };
+const LENGTHS = [[30, '30 sec'], [60, '1 min'], [120, '2 min'], [300, '5 min']];
+const LOOKS = [['photoreal live action', '🎥 Live action'], ['stylized 3D animation', '🧸 3D cartoon'], ['anime', '✏️ 2D anime'], ['stop-motion / claymation', '🧱 Claymation']];
+const QUICK_MODES = [['auto', '🚀 Fully auto'], ['gates', '🚦 Check key steps'], ['every', '🔍 Check every step']];
 
 const IDEA_DICE = [
   'A lonely lighthouse robot falls in love with a passing satellite.',
@@ -156,5 +159,6 @@ const TASK_LINES = {
   images: 'write the image prompts',
   video: 'write the video prompts',
   qc: 'run an independent QC preflight',
+  render: 'build the 3D previz video with code',
   wrap: 'wrap and assemble the master document',
 };

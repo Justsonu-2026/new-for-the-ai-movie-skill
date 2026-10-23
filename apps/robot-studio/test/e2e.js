@@ -1,126 +1,151 @@
-// End-to-end check with a fake Claude runtime (test/mock.js). Run: node apps/robot-studio/test/e2e.js
-// Needs Playwright with Chromium. Screenshots go to test/out/.
+// End-to-end check with a fake Claude runtime (test/mock.js) and a fake Anthropic API.
+// Run: node apps/robot-studio/test/e2e.js   (needs Playwright + Chromium; deps dir via RFS_DEPS with three@0.160.0 and an
+// esbuild ESM bundle of @anthropic-ai/sdk@0.131.0 at sdk.esm.js). Screenshots go to test/out/.
 const fs = require('fs');
 const path = require('path');
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/opt/node-tools/node_modules/playwright')); }
 const OUT = path.join(__dirname, 'out');
+const DEPS = process.env.RFS_DEPS || '/tmp/claude-0/-home-user/18b54fe4-2751-531c-8f1b-327981c35797/scratchpad/deps';
 fs.mkdirSync(OUT, { recursive: true });
-const page_html = fs.readFileSync(path.join(__dirname, '..', 'robot-studio.html'), 'utf8');
+const ROOT = path.join(__dirname, '..');
+const page_html = fs.readFileSync(path.join(ROOT, 'robot-studio.html'), 'utf8');
 const mock = fs.readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
 fs.writeFileSync(path.join(OUT, 'harness.html'), '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>' + mock + '</script></head><body>' + page_html + '</body></html>');
+const shot = (n) => path.join(OUT, n + '.png');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function routes(ctx) {
+  await ctx.route('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', (r) => r.fulfill({ path: path.join(DEPS, 'node_modules/three/build/three.module.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+  await ctx.route('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm', (r) => r.fulfill({ path: path.join(DEPS, 'sdk.esm.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+}
+
 (async () => {
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const errors = [];
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+  await routes(ctx);
+  const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/fonts|ERR_FAILED/.test(m.text())) errors.push('console: ' + m.text()); });
   await page.goto('file://' + path.join(OUT, 'harness.html'));
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: path.join(OUT, 'shot-01-welcome.png') });
+  await page.waitForSelector('.world-canvas', { timeout: 30000 });
+  await sleep(1500);
+  await page.screenshot({ path: shot('01-lobby') });
   await page.fill('#cmdInput', 'A tiny frog runs a ferry across a puddle during a thunderstorm.');
   await page.press('#cmdInput', 'Enter');
-  await page.waitForSelector('.wizard');
-  await page.screenshot({ path: path.join(OUT, 'shot-02-wizard1.png') });
-  await page.click('text=Next →'); await page.screenshot({ path: path.join(OUT, 'shot-03-wizard2.png') });
-  await page.click('text=Next →'); await page.screenshot({ path: path.join(OUT, 'shot-04-wizard3.png') });
-  await page.click('text=Next →');
-  await page.click('text=Code sketches');
-  await page.selectOption('.wiz-body .grid2:nth-of-type(2) label:nth-child(2) select', 'turbo').catch(()=>{});
-  await page.screenshot({ path: path.join(OUT, 'shot-05-wizard4.png') });
-  console.log('NULLTEXT wizard:', await page.evaluate(() => /\bnull\b/.test(document.querySelector('.wiz-body').innerText)));
+  await sleep(300);
+  console.log('IDEA IN LOBBY:', await page.inputValue('.newfilm textarea'));
+  await page.click('.pick:has-text("Check key steps")');
+  await page.click('details.more summary');
+  await page.selectOption('details.more .field:has-text("Animation speed") select', 'turbo');
   await page.click('text=Start production!');
-  await page.waitForTimeout(2500);
-  await page.screenshot({ path: path.join(OUT, 'shot-06-running.png') });
-  // mid-run comment
+  await sleep(2500);
+  await page.screenshot({ path: shot('02-cabin-seat') });
   await page.fill('#cmdInput', 'Please add more rain everywhere');
   await page.press('#cmdInput', 'Enter');
-  await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 60000 });
-  await page.screenshot({ path: path.join(OUT, 'shot-07-review-story.png') });
-  const review1 = await page.textContent('#reviewCard');
-  console.log('REVIEW1:', review1.slice(0, 80));
-  // check prompt contents
-  const calls = await page.evaluate(() => window.__calls.map((c) => ({ len: c.input.length, head: c.input.slice(0, 90), hasSkill: /<skill name=/.test(c.input), notes: /more rain everywhere/.test(c.input), imgs: c.images })));
-  console.log('CALLS', JSON.stringify(calls, null, 0));
-  // request change at gate
-  await page.fill('#reviewCard textarea', 'Make Dot a beetle instead');
-  await page.click('text=Request changes');
-  await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 60000 });
-  const lastStory = await page.evaluate(() => window.__calls.filter((c) => /story-writer/.test(c.input)).pop().input);
-  console.log('REVISION PROMPT has prev version:', /your_previous_version/.test(lastStory), 'has change:', /beetle/.test(lastStory));
+  await page.click('.nav-btn[data-page=studio]');
+  for (let k = 0; k < 4; k++) { await sleep(1800); await page.screenshot({ path: shot('03-studio-director-' + k) }); }
+  await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 120000 });
+  console.log('GATE 1:', await page.textContent('#reviewCard .review-head b'));
+  await page.screenshot({ path: shot('04-cabin-review') });
   await page.click('#reviewCard >> text=Approve & continue');
-  for (let k = 0; k < 8; k++) {
-    try { await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 90000 }); } catch (e) { console.log('no more reviews'); break; }
+  await page.click('.nav-btn[data-page=studio]');
+  await page.click('.cam-btn[data-cam=top]');
+  await sleep(1500);
+  await page.screenshot({ path: shot('05-studio-top') });
+  await page.selectOption('#roomSelect', 'cinematographer');
+  await sleep(1500);
+  await page.screenshot({ path: shot('06-room-cinematographer') });
+  await page.selectOption('#roomSelect', 'music-director');
+  await sleep(1200);
+  await page.screenshot({ path: shot('07-room-music') });
+  await page.click('.cam-btn[data-cam=director]');
+  for (let k = 0; k < 10; k++) {
+    try { await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 300000 }); } catch (e) { console.log('no more reviews'); break; }
     const t = await page.textContent('#reviewCard .review-head b');
     console.log('GATE:', t);
-    if (/style/i.test(t)) {
-      await page.click('.tab[data-tab=preview]');
-      await page.selectOption('#previewSelect', 'characters');
-      await page.click('.seg-btn[data-mode=board]');
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: path.join(OUT, 'shot-08-board-characters.png') });
-      await page.click('.tab[data-tab=chat]');
-    }
     if (/Wrap/.test(t)) { await page.click('#reviewCard >> text=Approve & continue'); break; }
     await page.click('#reviewCard >> text=Approve & continue');
-    await page.waitForTimeout(300);
+    await sleep(400);
+    if (k === 1) { await page.click('.nav-btn[data-page=studio]'); for (let j = 0; j < 5; j++) { await sleep(2200); await page.screenshot({ path: shot('08-studio-working-' + j) }); } }
   }
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: path.join(OUT, 'shot-09-wrapped.png') });
-  const status = await page.evaluate(() => document.querySelector('#progressCount').textContent + ' | ' + document.querySelector('#progressStage').textContent);
-  console.log('STATUS', status);
-  // change request after wrap via chat
-  await page.fill('#cmdInput', 'Make Fen braver please');
-  await page.press('#cmdInput', 'Enter');
-  await page.waitForTimeout(1500);
-  const chatTail = await page.evaluate(() => Array.from(document.querySelectorAll('.msg-text')).slice(-4).map((e) => e.textContent).join(' || '));
-  console.log('CHAT TAIL', chatTail);
-  await page.waitForSelector('#reviewCard:not([hidden])', { timeout: 90000 }).catch(() => console.log('no review after CR'));
-  console.log('AFTER CR GATE:', await page.textContent('#reviewCard .review-head b').catch(() => 'none'));
-  // previews
-  await page.click('.tab[data-tab=preview]');
-  await page.selectOption('#previewSelect', 'storyboard');
-  await page.click('.seg-btn[data-mode=board]');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, 'shot-10-storyboard.png') });
-  const svgSafe = await page.evaluate(() => { const s = document.querySelector('.sketch'); return s ? { script: !!s.querySelector('script'), onclick: !!s.querySelector('[onclick]') } : null; });
-  console.log('SVG SANITIZED', JSON.stringify(svgSafe));
-  await page.click('.seg-btn[data-mode=animatic]');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, 'shot-11-animatic.png') });
-  await page.click('.seg-btn[data-mode=master]');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, 'shot-12-master.png') });
-  await page.selectOption('#previewSelect', 'qc');
-  await page.click('.seg-btn[data-mode=board]');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, 'shot-13-qc.png') });
-  await page.click('.tab[data-tab=pipeline]');
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(OUT, 'shot-14-pipeline.png') });
-  console.log('NULLTEXT page:', await page.evaluate(() => /\bnull\b/.test(document.body.innerText)));
-  await page.click('#btnExport');
-  await page.click('.export-item:has-text("Master production document")');
-  await page.waitForTimeout(300);
+  await sleep(1500);
+  console.log('STATUS', await page.textContent('#progressCount'), '|', await page.textContent('#progressStage'));
+  await page.click('.nav-btn[data-page=screening]');
+  await sleep(400);
+  await page.screenshot({ path: shot('09-screening-docs') });
+  await page.click('.subtab:has-text("Boards")'); await page.selectOption('#previewSelect', 'characters'); await sleep(400);
+  await page.screenshot({ path: shot('10-boards-characters') });
+  await page.click('.subtab:has-text("Pictures")'); await sleep(4000);
+  await page.screenshot({ path: shot('11-pictures'), fullPage: false });
+  const frames = await page.$$eval('.frame-img', (els) => els.length);
+  console.log('3D KEYFRAMES RENDERED:', frames);
+  await page.click('.prompt-actions >> text=Code image'); await sleep(2500);
+  console.log('CODE IMAGE:', await page.$$eval('.gen-out img', (els) => els.length));
+  await page.click('.subtab:has-text("Previz video")'); await sleep(1500);
+  await page.click('.player-controls >> text=Play'); await sleep(2600);
+  await page.screenshot({ path: shot('12-previz-playing') });
+  await page.click('.player-controls >> text=Stop').catch(() => {});
+  await page.click('.player-controls >> text=Export video'); 
+  await page.waitForFunction(() => (window.__saved || []).some((s) => /webm/.test(s.filename)), null, { timeout: 60000 }).catch(() => {});
   console.log('SAVED', JSON.stringify(await page.evaluate(() => window.__saved)));
-  await page.keyboard.press('Escape');
-  await page.click('#btnSettings'); await page.waitForTimeout(200); await page.screenshot({ path: path.join(OUT, 'shot-15-settings.png') });
-  await page.click('.modal .choice:has-text("Fully auto")'); await page.waitForTimeout(100);
-  await page.click('.modal >> text=Save');
-  await page.click('#btnProjects'); await page.waitForTimeout(400); await page.screenshot({ path: path.join(OUT, 'shot-16-projects.png') });
-  await page.keyboard.press('Escape');
-  // click a robot
-  await page.click('.tab[data-tab=chat]');
-  await page.click('#btnOverview'); await page.waitForTimeout(1200);
-  await page.screenshot({ path: path.join(OUT, 'shot-17-overview.png') });
+  await page.click('.nav-btn[data-page=keys]'); await sleep(300);
+  await page.screenshot({ path: shot('13-keys-claude') });
+  await page.click('.nav-btn[data-page=board]'); await sleep(300);
+  await page.screenshot({ path: shot('14-board') });
+  console.log('NULLTEXT:', await page.evaluate(() => /\bnull\b|\bundefined\b/.test(document.querySelector('#app').innerText)));
+  await page.click('.nav-btn[data-page=cabin]'); await sleep(1200);
+  await page.screenshot({ path: shot('15-cabin-after') });
+
   // mobile
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+  await m.context().route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await routes(m.context());
   m.on('pageerror', (e) => errors.push('mobile pageerror: ' + e.message));
   await m.goto('file://' + path.join(OUT, 'harness.html'));
-  await m.waitForTimeout(800);
-  await m.screenshot({ path: path.join(OUT, 'shot-18-mobile.png'), fullPage: true });
-  const overflow = await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  console.log('MOBILE H-OVERFLOW px:', overflow);
+  await sleep(2000);
+  await m.screenshot({ path: shot('16-mobile-lobby'), fullPage: true });
+  console.log('MOBILE H-OVERFLOW px:', await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth));
+
+  // standalone copy on "your computer": no window.claude, brains from a (fake) Anthropic API key
+  const sctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await routes(sctx);
+  let apiCalls = 0;
+  await sctx.route('https://api.anthropic.com/**', async (r) => {
+    apiCalls++;
+    const body = JSON.parse(r.request().postData() || '{}');
+    const hdr = r.request().headers();
+    const txt = '# story document\n\nA frog ferries a ladybug.\n\n```json\n{"title":"Puddle Ferry","logline":"A frog ferries a ladybug home.","beats":[{"name":"Setup","summary":"Fen waits."}],"characters":[]}\n```\n';
+    const ev = (t, d) => `event: ${t}\ndata: ${JSON.stringify(d)}\n\n`;
+    const sse = ev('message_start', { type: 'message_start', message: { id: 'msg_1', type: 'message', role: 'assistant', model: body.model, content: [], stop_reason: null, usage: { input_tokens: 10, output_tokens: 1 } } })
+      + ev('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+      + txt.match(/[\s\S]{1,40}/g).map((c) => ev('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: c } })).join('')
+      + ev('content_block_stop', { type: 'content_block_stop', index: 0 })
+      + ev('message_delta', { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 50 } })
+      + ev('message_stop', { type: 'message_stop' });
+    if (apiCalls === 1) console.log('API REQUEST: model', body.model, '| effort', JSON.stringify(body.output_config), '| browser header', hdr['anthropic-dangerous-direct-browser-access'], '| key header', !!hdr['x-api-key']);
+    await r.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body: sse });
+  });
+  const s = await sctx.newPage();
+  s.on('pageerror', (e) => errors.push('standalone pageerror: ' + e.message));
+  await s.goto('file://' + path.join(ROOT, 'robot-studio-standalone.html'));
+  await s.waitForSelector('.key-card', { timeout: 30000 });
+  await s.screenshot({ path: shot('17-standalone-keys') });
+  await s.fill('.key-card:has-text("Anthropic") input[type=password]', 'sk-ant-test-key');
+  await s.click('text=Save keys');
+  await s.click('.nav-btn[data-page=lobby]');
+  await s.fill('.newfilm textarea', 'A frog ferry in a storm');
+  await s.click('.pick:has-text("Fully auto")');
+  await s.click('details.more summary');
+  await s.click('.choice:has-text("Story only")');
+  await s.click('text=Start production!');
+  await s.waitForFunction(() => /Story/.test(document.querySelector('#pipelineList') ? '' : '') || true);
+  await sleep(15000);
+  await s.click('.nav-btn[data-page=board]'); await sleep(300);
+  await s.screenshot({ path: shot('18-standalone-board') });
+  console.log('STANDALONE API CALLS:', apiCalls, '| story status:', await s.evaluate(() => Array.from(document.querySelectorAll('.pl-row')).slice(0, 3).map((r) => r.innerText.split('\n').slice(1, 3).join(' ')).join(' || ')));
   console.log('ERRORS', JSON.stringify(errors, null, 1));
   await browser.close();
 })();

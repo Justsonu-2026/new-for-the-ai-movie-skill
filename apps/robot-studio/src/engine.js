@@ -1,7 +1,4 @@
 // ---------- the production engine ----------
-const HF_SERVER = 'Higgsfield';
-const HF_TOOLS = ['generate_image', 'jobs_wait', 'show_generation_by_ids'];
-
 const Engine = (() => {
   let sample = null;
   let samplePromise = null;
@@ -14,9 +11,10 @@ const Engine = (() => {
   const on = (ev, fn) => (listeners[ev] = listeners[ev] || []).push(fn);
   const emit = (ev, ...a) => (listeners[ev] || []).forEach((fn) => { try { fn(...a); } catch (e) { console.error(e); } });
 
+  // `sample` is the brain: Claude in claude.ai, or the Anthropic API with the user's key elsewhere
   function getSample() {
-    if (!samplePromise) samplePromise = useCap('sample').then((fn) => (sample = fn));
-    return samplePromise;
+    if (!samplePromise) samplePromise = Brain.init(() => (P ? P.id : null)).then(() => (sample = Brain));
+    return samplePromise.then(() => (Brain.ready() ? Brain : null));
   }
 
   // ----- project -----
@@ -71,7 +69,7 @@ const Engine = (() => {
       `Dialogue language: ${st.language} · Audience: ${st.audience || 'general'}`,
       `Target image model: ${st.imageModel} · Target video model: ${st.videoModel}`,
       `Run mode: ${MODES[st.mode].label.replace(/^\S+\s/, '')} · Crew in use: ${crew}`,
-      `Image output mode: ${IMAGE_MODES[st.imageMode].label.replace(/^\S+\s/, '')}`,
+      `Pictures: ${(IMAGE_MODES[st.imageMode] || IMAGE_MODES.sketch).label.replace(/^\S+\s/, '')}`,
       '</project_brief_settings>',
     ].join('\n');
   }
@@ -197,49 +195,48 @@ How this studio differs from a project folder (these rules override the skill wh
     const robot = STAGE[id].robot;
     const R = ROBOTS[robot];
     if (robot === COORD) {
-      await Studio.walk(COORD, [Studio.robot(COORD).home.gx, Studio.robot(COORD).home.gy]);
-      Studio.say(COORD, revising ? 'Revision time! Let me rework this…' : `My turn: ${TASK_LINES[id]}.`, { ms: 2600 });
+      await W.goHome(COORD);
+      W.event('cabin');
+      W.say(COORD, revising ? 'Revision time! Let me rework this…' : `My turn: ${TASK_LINES[id]}.`, { ms: 2600 });
       return;
     }
-    const spot = Studio.spotOf(robot);
-    Studio.say(COORD, `Off to the ${ROOMS.find((r) => r.id === ROOM_OF[robot]).label}!`, { ms: 1600 });
-    await Studio.walk(COORD, [spot.gx, spot.gy]);
-    if (Studio.isFollowing()) Studio.focusRoom(ROOM_OF[robot]);
+    W.say(COORD, `Off to ${R.name}'s room!`, { ms: 1800 });
+    await W.goToRobot(COORD, robot);
     const line = revising ? `${R.name}, the client asked for a change: ${revising.slice(0, 80)}` : banter(BANTER.handoff, { name: R.name, task: TASK_LINES[id] });
-    Studio.setState(COORD, 'talk');
-    Studio.say(COORD, line, { ms: 2600, lines: 4 });
+    W.setState(COORD, 'talk');
+    W.say(COORD, line, { ms: 2600, lines: 4 });
     if (P.settings.chatter) chat(COORD, line, { team: true, to: robot });
     await sleepS(1500);
-    Studio.setState(COORD, 'idle');
+    W.setState(COORD, 'idle');
     const ack = banter(BANTER.ack);
-    Studio.setState(robot, 'talk');
-    Studio.say(robot, ack, { ms: 1800 });
+    W.setState(robot, 'talk');
+    W.say(robot, ack, { ms: 1800 });
     if (P.settings.chatter) chat(robot, ack, { team: true });
     await sleepS(1100);
   }
   async function collectAnimation(id) {
     const robot = STAGE[id].robot;
-    Studio.setState(robot, 'happy');
+    W.setState(robot, 'happy');
     const line = banter(BANTER.done);
-    Studio.say(robot, line, { ms: 2200 });
-    for (let k = 0; k < 4; k++) Studio.fx(robot);
+    W.say(robot, line, { ms: 2200 });
+    for (let k = 0; k < 4; k++) W.fx(robot);
     if (P.settings.chatter) chat(robot, line, { team: true });
     if (robot !== COORD) {
-      const spot = Studio.spotOf(robot);
-      await Studio.walk(COORD, [spot.gx, spot.gy]);
-      Studio.say(COORD, banter(BANTER.collect, { name: ROBOTS[robot].name }), { ms: 1800 });
+        await W.goToRobot(COORD, robot);
+      W.say(COORD, banter(BANTER.collect, { name: ROBOTS[robot].name }), { ms: 1800 });
       await sleepS(900);
-      Studio.walk(COORD, [Studio.robot(COORD).home.gx, Studio.robot(COORD).home.gy]).then(() => { if (Studio.isFollowing() && !running) Studio.focusRoom('office'); });
+      const home = W.goHome(COORD);
+      // before a review the Captain brings the work back to the cabin and hands it to you
+      if (needsReview(id) || P.settings.stopAfter === id || id === 'wrap') await home;
     }
-    setTimeout(() => { if (Studio.robot(robot).state === 'happy') Studio.setState(robot, 'idle'); }, 2600);
+    setTimeout(() => { if (W.robot(robot).state === 'happy') W.setState(robot, 'idle'); }, 2600);
   }
 
   async function callClaude(input, opts, onLive) {
-    await getSample();
-    if (!sample) throw { code: 'unavailable', message: 'Claude is not available in this view' };
+    if (!(await getSample())) throw { code: Brain.mode() === 'api' ? 'no_brain' : 'unavailable', message: 'No brain available' };
     ctl = new AbortController();
     const myCtl = ctl;
-    const res = await sample(input, {
+    const res = await Brain.sample(input, {
       modelTier: P.settings.tier, cache: false, signal: myCtl.signal,
       ...(opts.images && opts.images.length ? { images: opts.images } : {}),
       onText: ({ text }) => onLive && onLive(text),
@@ -259,23 +256,25 @@ How this studio differs from a project folder (these rules override the skill wh
     emit('change');
     const revising = extra && extra.revise;
     await handoffAnimation(id, revising);
-    Studio.setState(robot, 'think');
-    Studio.say(robot, 'Thinking…', { kind: 'thought' });
-    let fxTimer = setInterval(() => Studio.fx(robot), 1300 / (SPEEDS[P.settings.speed] || 1));
+    W.setState(robot, 'think');
+    W.event('work', { robot });
+    W.say(robot, 'Thinking…', { kind: 'thought' });
+    let fxTimer = setInterval(() => W.fx(robot), 1300 / (SPEEDS[P.settings.speed] || 1));
     let lastBubble = 0;
     const live = (text) => {
-      if (Studio.robot(robot).state !== 'write') Studio.setState(robot, 'write');
+      if (W.robot(robot).state !== 'write') W.setState(robot, 'write');
       st.liveText = text;
       st.words = words(text);
-      Studio.setPaper(robot, Math.min(1, text.length / 6000));
+      W.setPaper(robot, Math.min(1, text.length / 6000), lastWords(stripJsonBlock(text), 40));
       const now = Date.now();
-      if (now - lastBubble > 900) { lastBubble = now; Studio.say(robot, lastWords(stripJsonBlock(text), 9) || '…', { kind: 'thought', width: 28 }); }
+      if (now - lastBubble > 900) { lastBubble = now; W.say(robot, lastWords(stripJsonBlock(text), 9) || '…', { kind: 'thought', width: 28 }); }
       emit('stream', id);
     };
     try {
       let md = '';
       let data = null;
       if (id === 'master') ({ md, data } = await runMaster(live));
+      else if (id === 'render') ({ md, data } = await runRender(live));
       else {
         const input = buildPrompt(id, extra);
         const images = imagesFor(id);
@@ -293,8 +292,8 @@ How this studio differs from a project folder (these rules override the skill wh
       st.words = words(stripJsonBlock(md));
       if (id === 'brief' && data && data.title && (!P.settings.title || P.title === 'Untitled film')) { P.title = String(data.title).slice(0, 80); emit('title'); }
       if (S.sketch && P.settings.imageMode !== 'prompts') {
-        Studio.setState(robot, 'draw');
-        Studio.say(robot, 'Now the fun part: drawing! ✏️', { kind: 'thought' });
+        W.setState(robot, 'draw');
+        W.say(robot, 'Now the fun part: drawing! ✏️', { kind: 'thought' });
         try { await runSketches(id); } catch (e) { if (e && e.code === 'cancelled') throw e; chat(COORD, `The sketches for ${S.title} didn't come out (${e.code || 'error'}). The document is fine; you can retry the sketches from the Preview tab.`); }
       }
       st.endedAt = Date.now();
@@ -307,8 +306,8 @@ How this studio differs from a project folder (these rules override the skill wh
         st.revisionCR = lateCR[0].id;
       }
       clearInterval(fxTimer);
-      Studio.clearBubble(robot);
-      Studio.setPaper(robot, 1);
+      W.clearBubble(robot);
+      W.setPaper(robot, 1);
       emit('change');
       Store.saveProject(P, [id]);
       await collectAnimation(id);
@@ -323,14 +322,14 @@ How this studio differs from a project folder (these rules override the skill wh
       return { ok: true };
     } catch (e) {
       clearInterval(fxTimer);
-      Studio.clearBubble(robot);
+      W.clearBubble(robot);
       st.liveText = null;
       st.status = st.md ? 'done' : 'waiting';
-      if (e && e.code === 'cancelled') { st.status = st.version ? 'done' : 'waiting'; emit('change'); Studio.setState(robot, 'idle'); return { cancelled: true }; }
+      if (e && e.code === 'cancelled') { st.status = st.version ? 'done' : 'waiting'; emit('change'); W.setState(robot, 'idle'); return { cancelled: true }; }
       st.status = 'error';
       st.error = errCopy(e);
-      Studio.setState(robot, 'idle');
-      Studio.say(robot, 'Uh-oh… 🔧', { ms: 3000 });
+      W.setState(robot, 'idle');
+      W.say(robot, 'Uh-oh… 🔧', { ms: 3000 });
       chat(COORD, `${ROBOTS[robot].name} hit a snag on ${S.title}: ${st.error} I've paused the line. Press Retry in the Pipeline tab when you're ready.`, { error: true });
       emit('change');
       return { error: true, code: e && e.code };
@@ -354,6 +353,10 @@ How this studio differs from a project folder (these rules override the skill wh
       images_unavailable: 'Images can\'t be sent from this view. Remove image uploads and retry.',
       unavailable: 'Claude isn\'t reachable from this view. Open the studio in claude.ai.',
       upstream_error: 'The brain-link dropped (a temporary connection problem).',
+      no_brain: 'The robots have no brain here yet: add your Anthropic API key on the 🔑 Keys page (or open the studio inside claude.ai).',
+      bad_key: 'Your Anthropic API key was rejected. Check it on the 🔑 Keys page.',
+      network_blocked: 'The request could not reach Claude from this page (network blocked).',
+      invalid_request: 'The request was rejected as malformed. Try again, or switch Detail to Short.',
     })[c] || `Something went wrong (${c || 'unknown'}).`;
   }
 
@@ -368,7 +371,7 @@ How this studio differs from a project folder (these rules override the skill wh
     for (let k = 0; k < sceneIds.length; k++) {
       const sc = sceneIds[k];
       const scShots = shots.filter((x) => x.scene === sc).map((x) => x.id);
-      Studio.say(COORD, `Compiling ${sc} (${k + 1}/${sceneIds.length})…`, { kind: 'thought' });
+      W.say(COORD, `Compiling ${sc} (${k + 1}/${sceneIds.length})…`, { kind: 'thought' });
       const head = md + `\n## ${sc}\n\n`;
       const res = await callClaude(buildPrompt('master', { scene: sc, shots: scShots }), {}, (t) => live(head + t));
       md = head + stripJsonBlock(res.text) + '\n';
@@ -401,7 +404,7 @@ Output format, nothing else: for each item a line "### <id>" followed by one fen
 ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\n')}`;
       const res = await callClaude(prompt, {}, (text) => {
         parseSketches(text, group, st);
-        Studio.setPaper(STAGE[id].robot, Math.min(1, (k + group.length * 0.5) / items.length));
+        W.setPaper(STAGE[id].robot, Math.min(1, (k + group.length * 0.5) / items.length));
         emit('stream', id);
       });
       parseSketches(res.text, group, st);
@@ -425,10 +428,10 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
     const robot = STAGE[id].robot;
     running = true;
     emit('change');
-    Studio.setState(robot, 'draw');
+    W.setState(robot, 'draw');
     try { await runSketches(id); Store.saveProject(P, [id]); chat(robot, 'Fresh sketches, hot off the plotter! ✏️'); }
     catch (e) { if (!(e && e.code === 'cancelled')) chat(COORD, 'Sketching failed: ' + errCopy(e)); }
-    finally { running = false; Studio.setState(robot, 'idle'); emit('change'); }
+    finally { running = false; W.setState(robot, 'idle'); emit('change'); }
   }
 
   // ----- pipeline -----
@@ -448,12 +451,12 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
       return null;
     }
     if (id === 'animation' && !animated()) return BANTER.skip.animation;
+    if (id === 'render' && P.settings.imageMode === 'prompts') return 'Pictures by code are off for this film, Gary. Feet up! 🦶';
     return null;
   }
   async function run() {
     if (running || !P) return;
-    await getSample();
-    if (!sample) { chat(COORD, 'I can\'t reach Claude from this view, so the robots can\'t think yet. Open this studio inside claude.ai and press Start again.', { error: true }); return; }
+    if (!(await getSample())) { chat(COORD, Brain.mode() === 'api' ? 'My crew needs a brain! Add your Anthropic API key on the 🔑 Keys page, then press ▶ Continue.' : 'I can\'t reach Claude from this view, so the robots can\'t think yet. Open this studio inside claude.ai and press Start again.', { error: true }); emit('needbrain'); return; }
     running = true;
     pauseReq = false;
     emit('change');
@@ -468,8 +471,8 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
           if (skip) {
             P.stages[id].status = 'skipped';
             chat(COORD, skip, { team: true });
-            Studio.say(COORD, skip, { ms: 2600, lines: 4 });
-            Studio.setState(S.robot, 'off');
+            W.say(COORD, skip, { ms: 2600, lines: 4 });
+            W.setState(S.robot, 'off');
             emit('change');
             continue;
           }
@@ -486,7 +489,7 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
         if (needsReview(id)) { gate(id); break; }
         if (P.settings.stopAfter === id) {
           chat(COORD, `We've reached the stop you set (after ${S.title}). Press ▶ Continue when you want the crew to keep going.`);
-          Studio.say(COORD, 'Stop point reached! 🛑', { ms: 3000 });
+          W.say(COORD, 'Stop point reached! 🛑', { ms: 3000 });
           P.settings.stopAfter = null;
           break;
         }
@@ -502,7 +505,8 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
     P.stages[id].status = 'review';
     P.review = id;
     const S = STAGE[id];
-    Studio.say(COORD, `Boss, ${S.title} is ready for your eyes! 👀`, { ms: 4000 });
+    W.event('cabin');
+    W.say(COORD, `Boss, ${S.title} is ready for your eyes! 👀`, { ms: 4000 });
     chat(COORD, `${S.icon} ${S.title} v${P.stages[id].version} is ready for your review. Approve it, ask for changes, or have it redone.`, { review: id });
     emit('review', id);
   }
@@ -512,7 +516,7 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
     P.stages[id].status = 'done';
     P.review = null;
     chat('user', `✅ Approved ${STAGE[id].title}.`);
-    Studio.say(COORD, 'Approved! Rolling on… 🎬', { ms: 2000 });
+    W.say(COORD, 'Approved! Rolling on… 🎬', { ms: 2000 });
     emit('review', null);
     if (id === 'wrap') { finish(); return; }
     run();
@@ -550,11 +554,11 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
     if (P.stages.wrap.status === 'review') return;
     const pr = Store.progressOf(P);
     chat(COORD, `🎉 That's a wrap! ${pr.done}/${pr.total} stages done. Export the master production document from 📦 Export, or keep giving notes and I'll send changes through the crew.`);
-    Studio.say(COORD, "That's a wrap! 🎉", { ms: 4000 });
+    W.say(COORD, "That's a wrap! 🎉", { ms: 4000 });
     const crew = new Set(STAGES.filter((x) => P.stages[x.id].status === 'done').map((x) => x.robot));
     for (const r of crew) {
-      Studio.setState(r, 'happy');
-      setTimeout(() => { if (Studio.robot(r).state === 'happy') Studio.setState(r, 'idle'); }, 3500);
+      W.setState(r, 'happy');
+      setTimeout(() => { if (W.robot(r).state === 'happy') W.setState(r, 'idle'); }, 3500);
     }
     emit('wrap');
   }
@@ -590,12 +594,11 @@ ${group.map((g) => `- ${g.id} — ${g.title}: ${truncate(g.desc, 700)}`).join('\
   let chatBusy = false;
   async function coordinatorMessage(text, images) {
     chat('user', text);
-    Studio.setState(COORD, 'listen');
-    Studio.say(COORD, 'Hmm, let me think… 🤔', { kind: 'thought' });
-    await getSample();
-    if (!sample) {
+    W.setState(COORD, 'listen');
+    W.say(COORD, 'Hmm, let me think… 🤔', { kind: 'thought' });
+    if (!(await getSample())) {
       P.notes.push({ id: uid('n'), target: 'all', text, ts: Date.now() });
-      Studio.clearBubble(COORD);
+      W.clearBubble(COORD);
       chat(COORD, 'Noted! I\'ll pass that to the whole crew. (I can\'t think out loud in this view, so I saved it as a note for everyone.)');
       return;
     }
@@ -631,16 +634,16 @@ Action objects (use zero or more):
 Questions and chit-chat need no action. Stage ids: ${STAGE_ORDER.join(', ')}.`;
     try {
       const out = await sample.json(input, { modelTier: 'quick', cache: false, ...(images && images.length ? { images } : {}) });
-      Studio.clearBubble(COORD);
-      Studio.setState(COORD, 'talk');
+      W.clearBubble(COORD);
+      W.setState(COORD, 'talk');
       const reply = String(out && out.reply || 'Beep! Noted.');
       chat(COORD, reply);
-      Studio.say(COORD, reply, { ms: 3500, lines: 4 });
-      setTimeout(() => Studio.setState(COORD, 'idle'), 1800);
+      W.say(COORD, reply, { ms: 3500, lines: 4 });
+      setTimeout(() => W.setState(COORD, 'idle'), 1800);
       applyActions(Array.isArray(out && out.actions) ? out.actions : []);
     } catch (e) {
-      Studio.clearBubble(COORD);
-      Studio.setState(COORD, 'idle');
+      W.clearBubble(COORD);
+      W.setState(COORD, 'idle');
       P.notes.push({ id: uid('n'), target: 'all', text, ts: Date.now() });
       chat(COORD, `My chat circuits glitched (${errCopy(e)}) — but I saved your message as a note for the whole crew.`);
       emit('change');
@@ -690,34 +693,76 @@ Questions and chit-chat need no action. Stage ids: ${STAGE_ORDER.join(', ')}.`;
     run();
   }
 
-  // ----- real images through the viewer's Higgsfield connector (beta) -----
-  async function connectorImage(promptText, aspect, onStatus) {
-    const mcp = await useCap('mcp');
-    if (!mcp) throw { code: 'no_mcp', message: 'Connectors are not available in this view.' };
-    await getSample();
-    if (!sample) throw { code: 'unavailable' };
-    const tools = [
-      { name: 'describe_tool', description: 'Returns the input JSON schema of one Higgsfield tool. Call it before the first call of that tool.', inputSchema: { type: 'object', properties: { tool: { type: 'string', enum: HF_TOOLS } }, required: ['tool'] },
-        execute: async (inp) => { const d = await mcp.describeTool(HF_SERVER, String(inp.tool)); return { description: String(d.description || '').slice(0, 1500), inputSchema: d.inputSchema }; } },
-      { name: 'call_tool', description: 'Calls one Higgsfield tool with an input object and returns its result payload (JSON).', inputSchema: { type: 'object', properties: { tool: { type: 'string', enum: HF_TOOLS }, input: { type: 'object' } }, required: ['tool', 'input'] },
-        execute: async (inp, ctx) => {
-          if (!HF_TOOLS.includes(String(inp.tool))) throw new Error('tool not allowed');
-          onStatus && onStatus(inp.tool === 'generate_image' ? 'Submitting to Higgsfield…' : 'Waiting for the image…');
-          try {
-            const r = await mcp.callTool(HF_SERVER, String(inp.tool), inp.input || {}, { signal: ctx.signal });
-            return JSON.stringify(r.payload !== undefined ? r.payload : r.content).slice(0, 12000);
-          } catch (e) { throw new Error(`${e.code || 'error'}: ${String(e.message || '').slice(0, 300)}`); }
-        } },
-    ];
-    return sample.json(`Generate exactly one image with the Higgsfield connector. First describe_tool("generate_image") and call it with this prompt and aspect ratio (choose sensible defaults for anything else the schema needs; do not request more than one image). If the result is a job that is not finished, describe_tool("jobs_wait") and call it (timeout at most 15 seconds) up to 3 times. Then reply with only JSON: {"status": "done" | "pending" | "failed", "urls": ["https://..."], "job_id": "...", "note": "one short sentence"}.
+  // ----- Claude-made pictures and video: scene specs rendered with three.js -----
+  function previzContext() {
+    const pal = ((P.stages.style.data && P.stages.style.data.palette) || []).map((x) => `${x.name} ${x.hex} (${x.role})`).join('; ');
+    const chars = ((P.stages.characters.data && P.stages.characters.data.characters) || []).map((c) => `${c.id} ${c.name}: ${truncate(c.short_lock || c.identity_lock || '', 160)}; colors ${(c.colors || []).join(', ')}`).join('\n');
+    const locs = ((P.stages.world.data && P.stages.world.data.locations) || []).map((l) => `${l.id} ${l.name}: ${truncate(l.short_lock || l.lock || '', 160)}; palette ${(l.palette || []).join(', ')}`).join('\n');
+    return `Film: "${P.title}" · ${P.settings.medium} · ${P.settings.genre} · ${P.settings.aspect}\nStyle: ${truncate((P.stages.style.data && P.stages.style.data.style_lock) || '', 300)}\nPalette: ${pal || 'choose one that fits'}\nCharacters:\n${chars || '(from the shots)'}\nLocations:\n${locs || '(from the shots)'}`;
+  }
+  function parseSpecs(text) {
+    const d = extractJsonBlock(text) || (() => { const a2 = text.indexOf('{'), b2 = text.lastIndexOf('}'); try { return JSON.parse(text.slice(a2, b2 + 1)); } catch (e) { return null; } })();
+    return d && Array.isArray(d.shots) ? d.shots : [];
+  }
+  async function runRender(live) {
+    const shots = ((P.stages.master.data && P.stages.master.data.shots) || (P.stages.direction.data && P.stages.direction.data.shots) || []).slice(0, 40);
+    if (!shots.length) return { md: 'No shots to build yet.', data: { shots: [] } };
+    let md = '# Previz scene code — built by Greenscreen Gary\n\nEach shot below is a scene spec that Robo Film Studio renders in 3D (see the Screening room).\n';
+    const specs = [];
+    for (let k = 0; k < shots.length; k += 5) {
+      const group = shots.slice(k, k + 5);
+      W.say('vfx-supervisor', `Building shots ${k + 1}-${k + group.length} of ${shots.length}…`, { kind: 'thought' });
+      const prompt = `You are ${ROBOTS['vfx-supervisor'].name}, the VFX supervisor robot (vfx-supervisor skill) in Robo Film Studio. You build the 3D previz: for each shot below, write one scene spec that a three.js renderer turns into a short animated clip. Match the shot's framing, camera height and movement, the characters' positions and action, the location and the light. Use the palette and the characters' colors so every shot of a character looks the same.
 
-Prompt: ${promptText}
-Aspect ratio: ${aspect}`, { tools, modelTier: 'default' });
+${Previz.schema}
+
+${previzContext()}
+
+Shots:
+${group.map((x) => `- ${x.id}: ${x.size || ''} ${x.angle || ''} ${x.move || ''}; ${x.duration_s || 4} s; action: ${truncate(x.action || x.motion || '', 300)}; start: ${truncate(x.start_frame || '', 350)}; dialogue: ${x.dialogue || 'none'}`).join('\n')}
+
+Reply with only JSON: {"shots": [one spec per shot, same order]}.`;
+      const head = md + `\n## Shots ${k + 1}-${k + group.length}\n\n`;
+      const res = await callClaude(prompt, {}, (t) => live(head + '```json\n' + t + '\n```'));
+      const got = parseSpecs(res.text);
+      got.forEach((g, i) => { if (!g.shot && group[i]) g.shot = group[i].id; });
+      specs.push(...got);
+      md = head + got.map((g) => `- **${g.shot}** · ${g.duration_s || '?'} s · ${(g.characters || []).length} character(s), ${(g.objects || []).length} object(s)${g.caption ? ` · “${g.caption}”` : ''}`).join('\n') + '\n';
+      emit('stream', 'render');
+    }
+    md += '\n```json\n' + JSON.stringify({ shots: specs }) + '\n```\n';
+    return { md, data: { shots: specs } };
+  }
+  async function rerenderShot(shotId, note) {
+    if (!(await getSample())) throw { code: 'no_brain' };
+    const st = P.stages.render;
+    const shots = (P.stages.master.data && P.stages.master.data.shots) || (P.stages.direction.data && P.stages.direction.data.shots) || [];
+    const x = shots.find((y) => y.id === shotId) || { id: shotId };
+    const prev = ((st.data && st.data.shots) || []).find((y) => y.shot === shotId);
+    W.setState('vfx-supervisor', 'think');
+    try {
+      const spec = await Brain.json(`You are the VFX supervisor robot. Rewrite the 3D previz scene spec for shot ${shotId}.\n\n${Previz.schema}\n\n${previzContext()}\n\nShot: ${x.size || ''} ${x.angle || ''} ${x.move || ''}; ${x.duration_s || 4} s; action: ${x.action || x.motion || ''}; dialogue: ${x.dialogue || 'none'}\n${prev ? 'Previous spec: ' + JSON.stringify(prev) : ''}\n${note ? 'Change requested: ' + note : ''}\n\nReply with only the JSON spec object.`, { modelTier: P.settings.tier, cache: false });
+      spec.shot = shotId;
+      st.data = st.data || { shots: [] };
+      const i = st.data.shots.findIndex((y) => y.shot === shotId);
+      if (i >= 0) st.data.shots[i] = spec; else st.data.shots.push(spec);
+      Store.saveProject(P, ['render']);
+      return spec;
+    } finally { W.setState('vfx-supervisor', 'idle'); }
+  }
+  async function codeImage(promptText, aspect) {
+    if (!(await getSample())) throw { code: 'no_brain' };
+    W.setState('image-prompt-engineer', 'draw');
+    try {
+      const spec = await Brain.json(`You are Pixel Prompt, the image prompt engineer robot. Turn this image prompt into one 3D scene spec that a three.js renderer draws as a still picture (it is shown at its first moment, so put everything in its starting place).\n\n${Previz.schema}\n\n${previzContext()}\n\nImage prompt: ${promptText}\n\nReply with only the JSON spec object.`, { modelTier: P.settings.tier, cache: false });
+      const blob = await Previz.still(spec, aspect, 0);
+      return { spec, blob, url: URL.createObjectURL(blob) };
+    } finally { W.setState('image-prompt-engineer', 'idle'); }
   }
 
   return {
     on, emit, getSample, newProject, project, setProject, run, pause, stop, approve, requestChanges, redo, retry,
-    coordinatorMessage, applyChange, sendQcFixes, redoSketches, connectorImage, enabled, downstreamOf,
+    coordinatorMessage, applyChange, sendQcFixes, redoSketches, rerenderShot, codeImage, enabled, downstreamOf,
     isRunning: () => running, current: () => currentStage, buildPrompt, chat, errCopy,
   };
 })();

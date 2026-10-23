@@ -4,7 +4,7 @@ const iso = (gx, gy) => ({ x: (gx - gy) * TW, y: (gx + gy) * TH });
 const pts = (arr) => arr.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 const up = (p, hgt) => ({ x: p.x, y: p.y - hgt });
 
-const Studio = (() => {
+const Studio2D = (() => {
   let svg, layerFloor, layerObj, layerSign, layerOver;
   const robots = {}; // id -> {el, gx, gy, home:{gx,gy}, desk, paper, bubble, room}
   const roomGeo = {};
